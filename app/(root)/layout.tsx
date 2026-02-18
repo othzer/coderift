@@ -1,0 +1,41 @@
+import { Metadata } from "next";
+import { Header } from "@/modules/home/header";
+import { Footer } from "@/modules/home/footer";
+import { cn } from "@/lib/utils";
+
+export const metadata: Metadata = {
+  //for better SEO and page titles (basically better UX)
+  title: {
+    template: "CodeRift | Vibe Code Editor",
+    default: "CodeRift",
+  },
+  description:
+    "CodeRift is a powerful online AI powered vibe code editor that allows you to write, edit, and collaborate on code in real-time. With its intuitive interface and advanced features, CodeRift is the perfect tool for developers of all skill levels.",
+};
+
+export default function HomeLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <>
+      <Header />
+
+      <div
+        className={cn(
+          "absolute inset-0",
+          "[background-size:25px_25px]",
+          "[background-image:linear-gradient(to_right,#e4e4e7_1px,transparent_1px),linear-gradient(to_bottom,#e4e4e7_1px,transparent_1px)]",
+          "dark:[background-image:linear-gradient(to_right,#262626_1px,transparent_1px),linear-gradient(to_bottom,#262626_1px,transparent_1px)]",
+        )}
+      />
+
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-black" />
+
+      <main className="z-20 relative w-full pt-0 ">{children}</main>
+
+      <Footer />
+    </>
+  );
+}

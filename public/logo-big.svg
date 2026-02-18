@@ -1,0 +1,9 @@
+<svg width="320" height="100" viewBox="0 0 320 100" xmlns="http://www.w3.org/2000/svg">
+  <rect width="320" height="100" rx="16" fill="#0B1220"/>
+
+  <text x="28" y="64" font-family="monospace" font-weight="700" font-size="38" fill="#3B82F6">
+    Code<tspan fill="#E2E8F0">Rift</tspan>
+  </text>
+
+  <rect x="28" y="74" width="98" height="4" rx="2" fill="#3B82F6"/>
+</svg>
