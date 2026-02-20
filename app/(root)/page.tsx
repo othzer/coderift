@@ -9,7 +9,7 @@ export default function Home() {
     <div className=" z-20 flex flex-col items-center justify-start min-h-screen py-2 mt-10">
       
       <div className="flex flex-col justify-center items-center my-5">
-      <Image src={"/hero.svg"} alt="Hero-Section" height={500}  width={500}/>
+      <Image src={"/hero.svg"} alt="Hero-Section" height={300}  width={300}/>
       
       <h1 className=" z-20 text-6xl mt-5 font-extrabold text-center bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-[#6057ff] to-blue-500 dark:from-indigo-400 dark:via-[#6057ff] dark:to-blue-400 tracking-tight leading-[1.3] ">
         Vibe Code With with Intelligence
