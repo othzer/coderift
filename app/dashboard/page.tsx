@@ -22,7 +22,6 @@ const DashBoard = async() => {
                     <EmptyState />
                 ):(
                     <ProjectTable
-                        {/*@ts-ignore*/}
                         projects={playgrounds || []}
                         onDeleteProject = {()=>{}}
                         onUpdateProject = {()=>{}}
