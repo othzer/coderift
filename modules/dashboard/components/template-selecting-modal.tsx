@@ -124,7 +124,7 @@ const templates: TemplateOption[] = [
     icon: "/angular-icon.svg",
     color: "#DD0031",
     popularity: 3,
-    tags: ["React", "Fullstack", "JavaScript"],
+    tags: ["Fullstack", "JavaScript"],
     features: [
       "Reactive Data Binding",
       "Component System",
@@ -151,7 +151,7 @@ const TemplateSelectionModal = ({
 
 //Todo Implement Filter Here
     const filteredTemplates = templates.filter((template)=>{
-        const matchesSearch = template.name.toLowerCase().includes(searchQuery.toLowerCase()) || template.description.toLowerCase().includes(searchQuery.toLowerCase()) || template.tags.some((tag)=>{tag.toLowerCase().includes(searchQuery.toLowerCase())})
+        const matchesSearch = template.name.toLowerCase().includes(searchQuery.toLowerCase()) || template.description.toLowerCase().includes(searchQuery.toLowerCase()) || template.tags.some((tag)=> tag.toLowerCase().includes(searchQuery.toLowerCase()))
 
         const matchesCategory = category=== "all" || template.category === category;
 
