@@ -1,4 +1,4 @@
-import { getAllPlaygroundForUser } from '@/modules/dashboard/actions'
+import { deleteProjectById, duplicateProjectById, editProjectById, getAllPlaygroundForUser } from '@/modules/dashboard/actions'
 import AddNewButton from '@/modules/dashboard/components/add-new-button'
 import AddRepo from '@/modules/dashboard/components/add-repo-button'
 import EmptyState from '@/modules/dashboard/components/empty-state'
@@ -23,9 +23,9 @@ const DashBoard = async() => {
                 ):(
                     <ProjectTable
                         projects={playgrounds || []}
-                        onDeleteProject = {()=>{}}
-                        onUpdateProject = {()=>{}}
-                        onDuplicateProject = {()=>{}} 
+                        onDeleteProject = {deleteProjectById}
+                        onUpdateProject = {editProjectById}
+                        onDuplicateProject = {duplicateProjectById} 
                     />
                 )
 
