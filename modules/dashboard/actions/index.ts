@@ -108,7 +108,8 @@ export const createProject = async(data: {
         })
         return playground;
     } catch (error) {
-        console.log(error);
+        console.error("Failed to create project:", error);
+        return null;
     }
 }
 
@@ -158,7 +159,7 @@ export const duplicateProjectById = async(id: string)=>{
             }
         })
 
-        revalidatePath('/dasboard')
+        revalidatePath('/dashboard')
         return duplicatedPlayground;
     } catch (error) {
         console.log(error);

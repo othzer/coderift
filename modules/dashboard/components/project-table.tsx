@@ -112,7 +112,7 @@ export default function ProjectTable({
     
     try {
       await onDeleteProject(selectedProject.id)
-      setEditDialogOpen(false);
+      setDeleteDialogOpen(false);
       setSelectedProject(null);
       toast.success("Project deleted successfully")
     } catch (error) {
@@ -203,7 +203,7 @@ export default function ProjectTable({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
                       <DropdownMenuItem asChild>
-                        <MarkedToggleButton markedForRevision={project.starmark?.[0]?.isMarked} id={project.id} />
+                        <MarkedToggleButton markedForRevision={project.starmark?.[0]?.isMarked ?? false} id={project.id} />
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link href={`/playground/${project.id}`} className="flex items-center">
