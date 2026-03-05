@@ -6,9 +6,11 @@ import { TemplateFolder } from "../lib/path-to-json";
 
 
 export const getPlaygroundById = async(id:string)=>{
+    const user = await currentUser();
+    if (!user) throw new Error("Unauthorized");
     try {
         const playground = await db.playground.findUnique({
-            where: {id},
+            where: {id, userId: user.id },
             select: {
                 templateFiles:{
                     select: {
@@ -20,14 +22,20 @@ export const getPlaygroundById = async(id:string)=>{
         return playground;
     } catch (error) {
         console.error(error);
+        throw error;
     }
 }
 
 export const SaveUpdatedCode = async(playgroundId:string , data:TemplateFolder)=>{
-    const user = await currentUser();
-  if (!user) return null;
+  const user = await currentUser();
+  if (!user) throw new Error("Unauthorized");
 
   try {
+    const owned = await db.playground.findFirst({
+      where: { id: playgroundId, userId: user.id },
+      select: { id: true },
+    });
+    if (!owned) throw new Error("Forbidden");
     const updatedPlayground = await db.templateFile.upsert({
         where:{
             playgroundId
@@ -40,10 +48,10 @@ export const SaveUpdatedCode = async(playgroundId:string , data:TemplateFolder)=
             content:JSON.stringify(data)
         }
     })
-    
+
     return updatedPlayground;
   } catch (error) {
-     console.log("SaveUpdatedCode error:", error);
-    return null;
+    console.log("SaveUpdatedCode error:", error);
+    throw error;
   }
 }
