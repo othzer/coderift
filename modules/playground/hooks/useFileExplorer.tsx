@@ -41,16 +41,33 @@ export const useFileExplorer = create<FileExplorerState>((set, get) => ({
   activeFileId: null,
   editorContent: "",
 
+
   setTemplateData: (data) => set({ templateData: data }),
   setPlaygroundId(id) {
-    set({ playgroundId: id });
+    const currentId = get().playgroundId;
+    if (currentId === id) {
+      return;
+    }
+    set({
+      playgroundId: id,
+      templateData: null,
+      openFiles: [],
+      activeFileId: null,
+      editorContent: "",
+    });
   },
+
   setEditorContent: (content) => set({ editorContent: content }),
   setOpenFiles: (files) => set({ openFiles: files }),
   setActiveFileId: (fileId) => set({ activeFileId: fileId }),
 
   openFile: (file) => {
-    const fileId = generateFileId(file, get().templateData!);
+    const templateData = get().templateData;
+    if (!templateData) {
+      return;
+    }
+    const fileId = generateFileId(file, templateData);
+
     const { openFiles } = get();
     const existingFile = openFiles.find((f) => f.id === fileId);
 
