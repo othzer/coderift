@@ -24,6 +24,8 @@ import {
 import LoadingStep from "@/modules/playground/components/loader";
 import { PlaygroundEditor } from "@/modules/playground/components/playground-editor";
 import { TemplateFileTree } from "@/modules/playground/components/playground-explorer";
+import ToggleAI from "@/modules/playground/components/toggle-ai";
+import { useAISuggestions } from "@/modules/playground/hooks/useAISuggestion";
 import { useFileExplorer } from "@/modules/playground/hooks/useFileExplorer";
 import { usePlayground } from "@/modules/playground/hooks/usePlayground";
 import { findFilePath } from "@/modules/playground/lib";
@@ -58,6 +60,8 @@ const MainPlaygroundPage = () => {
 
   const { playgroundData, templateData, isLoading, error, saveTemplateData } =
     usePlayground(id);
+
+  const aiSuggestions = useAISuggestions();
 
   const {
     setTemplateData,
@@ -409,6 +413,12 @@ const MainPlaygroundPage = () => {
                   <TooltipContent>Save All (Ctrl+Shift+S)</TooltipContent>
                 </Tooltip>
 
+                <ToggleAI
+                isEnabled={aiSuggestions.isEnabled}
+                onToggle={aiSuggestions.toggleEnabled}
+                suggestionLoading={false}
+               />
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" variant="outline">
@@ -494,6 +504,17 @@ const MainPlaygroundPage = () => {
 
                         onContentChange={(value)=>
                           activeFileId && updateFileContent(activeFileId, value)
+                        }
+                        suggestion={aiSuggestions.suggestion}
+                        suggestionLoading={aiSuggestions.isLoading}
+                        suggestionPosition={aiSuggestions.position}
+                        onAcceptSuggestion={(editor , monaco)=>aiSuggestions.acceptSuggestion(editor , monaco)}
+
+                        onRejectSuggestion={(editor) =>
+                          aiSuggestions.rejectSuggestion(editor)
+                        }
+                        onTriggerSuggestion={(type, editor) =>
+                          aiSuggestions.fetchSuggestion(type, editor)
                         }
                       />
                     </ResizablePanel>
