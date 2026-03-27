@@ -416,7 +416,7 @@ const MainPlaygroundPage = () => {
                 <ToggleAI
                 isEnabled={aiSuggestions.isEnabled}
                 onToggle={aiSuggestions.toggleEnabled}
-                suggestionLoading={false}
+                suggestionLoading={aiSuggestions.isLoading}
                />
 
                 <DropdownMenu>
@@ -505,17 +505,8 @@ const MainPlaygroundPage = () => {
                         onContentChange={(value)=>
                           activeFileId && updateFileContent(activeFileId, value)
                         }
-                        suggestion={aiSuggestions.suggestion}
-                        suggestionLoading={aiSuggestions.isLoading}
-                        suggestionPosition={aiSuggestions.position}
-                        onAcceptSuggestion={(editor , monaco)=>aiSuggestions.acceptSuggestion(editor , monaco)}
-
-                        onRejectSuggestion={(editor) =>
-                          aiSuggestions.rejectSuggestion(editor)
-                        }
-                        onTriggerSuggestion={(type, editor) =>
-                          aiSuggestions.fetchSuggestion(type, editor)
-                        }
+                        aiEnabled={aiSuggestions.isEnabled}
+                        onAiLoadingChange={aiSuggestions.setLoading}
                       />
                     </ResizablePanel>
 
