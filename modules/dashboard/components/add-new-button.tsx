@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react"
 import { toast } from "sonner";
 import TemplateSelectionModal from "./template-selecting-modal";
-import { createProject } from "../actions";
+import { createProject, importGithubRepo } from "../actions";
 
 const AddNewButton = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -31,6 +31,13 @@ const AddNewButton = () => {
     toast.success("Playground created successfully");
     setIsModalOpen(false);
     router.push(`/playground/${res?.id}`);
+  }
+
+  const handleImportGithub = async (data: { repoUrl: string; title?: string }) => {
+    const res = await importGithubRepo(data);
+    toast.success("Repository imported successfully");
+    setIsModalOpen(false);
+    router.push(`/playground/${res.id}`);
   }
 
   return (
@@ -73,6 +80,7 @@ const AddNewButton = () => {
         isOpen={isModalOpen}
         onClose={()=>setIsModalOpen(false)}
         onSubmit={handleSubmit}
+        onImportGithub={handleImportGithub}
       />
     </>
   )
