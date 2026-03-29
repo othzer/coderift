@@ -3,6 +3,12 @@
 import { db } from "@/lib/db";
 import { currentUser } from "@/modules/auth/actions";
 import { revalidatePath } from "next/cache";
+import {
+  detectTemplateAndNormalize,
+  fetchGithubRepoAsTemplateFolder,
+  parseGithubRepoUrl,
+} from "@/lib/github-import";
+import { SaveUpdatedCode } from "@/modules/playground/actions";
 
 export const toggleStarMarked = async (playgroundId: string, isChecked: boolean) => {
     const user = await currentUser();
@@ -110,6 +116,43 @@ export const createProject = async(data: {
     } catch (error) {
         console.log(error);
     }
+}
+
+export const importGithubRepo = async (data: { repoUrl: string; title?: string }) => {
+    const user = await currentUser();
+    if (!user?.id) {
+        throw new Error("Unauthorized");
+    }
+
+    const { owner, repo, branch } = parseGithubRepoUrl(data.repoUrl);
+
+    // Use the user's GitHub OAuth token if available to raise the API rate limit
+    const account = await db.account.findFirst({
+        where: { userId: user.id, provider: "github" },
+    });
+
+    const rawFolder = await fetchGithubRepoAsTemplateFolder(
+        owner,
+        repo,
+        branch,
+        account?.accessToken ?? undefined
+    );
+    const { template, folder } = detectTemplateAndNormalize(rawFolder);
+
+    const playground = await db.playground.create({
+        data: {
+            title: data.title || repo,
+            description: `Imported from github.com/${owner}/${repo}`,
+            template,
+            user: {
+                connect: { id: user.id }
+            }
+        }
+    });
+
+    await SaveUpdatedCode(playground.id, folder);
+
+    return playground;
 }
 
 export const deleteProjectById = async(id: string)=>{

@@ -60,11 +60,12 @@ model Account {
 
 enum Templates {
   REACT
-  NEXTJS 
+  NEXTJS
   EXPRESS
   VUE
   ANGULAR
   HONO
+  CUSTOM
 }
 
 model Playground {
