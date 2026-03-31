@@ -73,7 +73,11 @@ model Playground {
   title String
   description String?
   template Templates @default(REACT)
-  
+
+  // When true, the playground is viewable read-only via a shareable link
+  // without signing in. Defaults to private.
+  isPublic Boolean @default(false)
+
   userId String @map("userId")
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -81,7 +85,7 @@ model Playground {
   templateFiles TemplateFile[]
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt  
+  updatedAt DateTime @updatedAt
 }
 
 model Starmark {
@@ -108,12 +112,13 @@ model TemplateFile{
 
 model ChatMessage {
   id  String @id @default(cuid()) @map("_id")
-  userId String 
-  role   String  // "user" or "assitant"
+  userId String
+  playgroundId String?  // chat is scoped to the playground it was sent from
+  role   String  // "user" or "assistant"
   content String
   createdAt DateTime  @default(now())
 
   user  User @relation(fields: [userId] , references: [id] , onDelete: Cascade)
 
-  @@index([userId])
-} 
+  @@index([userId, playgroundId])
+}

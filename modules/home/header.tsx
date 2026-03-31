@@ -1,7 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
+import { ArrowUpRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import UserButton from "../auth/components/user-button";
+import { CommandPaletteTrigger } from "@/components/command-palette-trigger";
 
 export function Header() {
   return (
@@ -44,34 +47,30 @@ export function Header() {
                       Rigpaz
                     </span>
                   </Link>
-                  <span className="text-zinc-300 dark:text-zinc-700">|</span>
-                  {/* Desktop Navigation Links */}
-                  <div className="hidden sm:flex items-center gap-4">
-                    <Link
-                      href="/dashboard"
-                      className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
-                    >
-                      Dashboard
-                    </Link>
-                  </div>
                 </div>
 
                 {/* Right side items */}
                 <div className="hidden sm:flex items-center gap-3">
+                  <CommandPaletteTrigger />
                   <span className="text-zinc-300 dark:text-zinc-700">|</span>
                   <ThemeToggle />
+                  <Link href="/dashboard">
+                    <Button variant="brand" size="sm">
+                      Get Started
+                      <ArrowUpRight className="h-3.5 w-3.5" />
+                    </Button>
+                  </Link>
                   <UserButton />
                 </div>
 
                 {/* Mobile Navigation */}
-                <div className="flex sm:hidden items-center gap-4">
-                  <Link
-                    href="/dashboard"
-                    className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
-                  >
-                    Dashboard
-                  </Link>
+                <div className="flex sm:hidden items-center gap-3">
                   <ThemeToggle />
+                  <Link href="/dashboard">
+                    <Button variant="brand" size="sm">
+                      Get Started
+                    </Button>
+                  </Link>
                   <UserButton />
                 </div>
               </div>

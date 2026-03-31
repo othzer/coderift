@@ -13,6 +13,7 @@ export interface Project {
     title: string
     description: string | null
     template: string
+    isPublic: boolean
     createdAt: Date
     updatedAt: Date
     userId: string
