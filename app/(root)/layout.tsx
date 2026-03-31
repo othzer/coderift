@@ -6,11 +6,11 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = {
   //for better SEO and page titles (basically better UX)
   title: {
-    template: "CodeRift | Vibe Code Editor",
-    default: "CodeRift",
+    template: "%s | Rigpaz",
+    default: "Rigpaz | AI Vibe Code Editor",
   },
   description:
-    "CodeRift is a powerful online AI powered vibe code editor that allows you to write, edit, and collaborate on code in real-time. With its intuitive interface and advanced features, CodeRift is the perfect tool for developers of all skill levels.",
+    "Rigpaz is a powerful online AI powered vibe code editor that allows you to write, edit, and run code right in your browser. With its intuitive interface and advanced features, Rigpaz is the perfect tool for developers of all skill levels.",
 };
 
 export default function HomeLayout({

@@ -38,22 +38,20 @@ const SignInFormClient = () => {
       <CardContent className="grid gap-4">
         <form action={handleGoogleSignIn}>
           <Button type="submit" variant={"outline"} className="w-full">
-            {/* <Chrome className="mr-2 h-4 w-4" /> */}
-            <SiGoogle size={32} color="#4285F4" className="mr-2" />
-            <span>Sign in with google</span>
+            <SiGoogle size={18} color="#4285F4" className="mr-2" />
+            <span>Sign in with Google</span>
           </Button>
         </form>
         <form action={handleGithubSignIn}>
           <Button type="submit" variant={"outline"} className="w-full">
-            {/* <Github className="mr-2 h-4 w-4" /> */}
-            <SiGithub size={32} color="#181717" />
-            <span>Sign in with github</span>
+            <SiGithub size={18} color="currentColor" className="mr-2 text-foreground" />
+            <span>Sign in with GitHub</span>
           </Button>
         </form>
       </CardContent>
 
       <CardFooter>
-        <p className="text-sm text-center text-gray-500 dark:text-gray-400 w-full">
+        <p className="text-sm text-center text-muted-foreground w-full">
           By signing in, you agree to our{" "}
           <a href="#" className="underline hover:text-primary">
             Terms of Service

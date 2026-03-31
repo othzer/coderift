@@ -1,9 +1,6 @@
 
+// Routes that can be visited without being signed in.
 export const publicRoutes: string[]=[
-
-]
-
-export const protectedRoutes: string[]=[
     "/"
 ]
 

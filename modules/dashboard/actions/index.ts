@@ -99,23 +99,21 @@ export const createProject = async(data: {
         throw new Error("Unauthorized");
     }
 
-    try {
-        const playground = await db.playground.create({
-            data: {
-                title: title,
-                description: description,
-                template: template,
-                user: {
-                    connect: {
-                        id: user.id
-                    }
+    const playground = await db.playground.create({
+        data: {
+            title: title,
+            description: description,
+            template: template,
+            user: {
+                connect: {
+                    id: user.id
                 }
             }
-        })
-        return playground;
-    } catch (error) {
-        console.log(error);
-    }
+        }
+    })
+
+    revalidatePath("/dashboard");
+    return playground;
 }
 
 export const importGithubRepo = async (data: { repoUrl: string; title?: string }) => {
@@ -156,54 +154,64 @@ export const importGithubRepo = async (data: { repoUrl: string; title?: string }
 }
 
 export const deleteProjectById = async(id: string)=>{
-    try {
-        await db.playground.delete({
-            where: {id: id}
-        })
+    const user = await currentUser();
+    if (!user?.id) throw new Error("Unauthorized");
 
-        revalidatePath("/dashboard")  //updates the cached data
-    } catch (error) {
-        console.log(error)
-    }
+    // deleteMany with the userId filter guarantees a user can only delete
+    // their own playground (prevents IDOR).
+    await db.playground.deleteMany({
+        where: { id, userId: user.id }
+    });
+
+    revalidatePath("/dashboard")  //updates the cached data
 }
 
 export const editProjectById = async(id: string, data:{title:string, description: string}) =>{
-    try {
-        await db.playground.update({
-            where: {id: id},
-            data: data
-        });
+    const user = await currentUser();
+    if (!user?.id) throw new Error("Unauthorized");
 
-        revalidatePath("/dashboard");
-    } catch (error) {
-        console.log(error);
-    }
+    // updateMany scoped by userId so a user can only edit their own playground.
+    await db.playground.updateMany({
+        where: { id, userId: user.id },
+        data: data
+    });
+
+    revalidatePath("/dashboard");
 }
 
 export const duplicateProjectById = async(id: string)=>{
-    try {
-        const originalPlayground = await db.playground.findUnique({
-            where: {id: id},
-            //to-do add template files
-        });
-        if(!originalPlayground){
-            throw new Error("Original playground not found");
-        }
+    const user = await currentUser();
+    if (!user?.id) throw new Error("Unauthorized");
 
-        const duplicatedPlayground = await db.playground.create({
-            data: {
-                title: `${originalPlayground.title} (Copy)`,
-                description: originalPlayground.description,
-                template: originalPlayground.template,
-                userId: originalPlayground.userId
+    const originalPlayground = await db.playground.findFirst({
+        where: { id, userId: user.id },
+        include: { templateFiles: true },
+    });
 
-                //to-do: template file
-            }
-        })
-
-        revalidatePath('/dasboard')
-        return duplicatedPlayground;
-    } catch (error) {
-        console.log(error);
+    if(!originalPlayground){
+        throw new Error("Original playground not found");
     }
+
+    const duplicatedPlayground = await db.playground.create({
+        data: {
+            title: `${originalPlayground.title} (Copy)`,
+            description: originalPlayground.description,
+            template: originalPlayground.template,
+            userId: user.id, // the copy belongs to the current user
+        }
+    });
+
+    // Copy the saved files (if any) into the new playground.
+    const originalFiles = originalPlayground.templateFiles[0];
+    if (originalFiles) {
+        await db.templateFile.create({
+            data: {
+                playgroundId: duplicatedPlayground.id,
+                content: originalFiles.content ?? "",
+            }
+        });
+    }
+
+    revalidatePath('/dashboard')
+    return duplicatedPlayground;
 }

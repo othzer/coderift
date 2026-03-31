@@ -40,6 +40,9 @@ const WebContainerPreview = ({
   const [setupError, setSetupError] = useState<string | null>(null);
   const [isSetupComplete, setIsSetupComplete] = useState(false);
   const [isSetupInProgress, setIsSetupInProgress] = useState(false);
+  // Ref-based lock: state updates are async, so two effect runs in the same
+  // tick could both read isSetupInProgress===false and both start `npm install`.
+  const setupStartedRef = useRef(false);
 
   const terminalRef = useRef<any>(null);
 
@@ -57,12 +60,19 @@ const WebContainerPreview = ({
         starting: false,
         ready: false,
       });
+      setupStartedRef.current = false;
     }
   }, [forceResetup]);
 
   useEffect(() => {
+    // Holds the server-ready unsubscribe so we can detach it on cleanup and
+    // never accumulate duplicate listeners.
+    let unsubscribeServerReady: (() => void) | undefined;
+
     async function setupContainer() {
-      if (!instance || isSetupComplete || isSetupInProgress) return;
+      if (!instance || setupStartedRef.current) return;
+      // Lock synchronously so a same-tick re-run can't start a second setup.
+      setupStartedRef.current = true;
 
       try {
         setIsSetupInProgress(true);
@@ -82,7 +92,7 @@ const WebContainerPreview = ({
               );
             }
 
-            instance.on("server-ready", (port: number, url: string) => {
+            unsubscribeServerReady = instance.on("server-ready", (port: number, url: string) => {
               if (terminalRef.current?.writeToTerminal) {
                 terminalRef.current.writeToTerminal(
                   `🌐 Reconnected to server at ${url}\r\n`
@@ -194,7 +204,7 @@ const WebContainerPreview = ({
 
         const startProcess = await instance.spawn("npm", ["run", "start"]);
 
-        instance.on("server-ready", (port: number, url: string) => {
+        unsubscribeServerReady = instance.on("server-ready", (port: number, url: string) => {
           if (terminalRef.current?.writeToTerminal) {
             terminalRef.current.writeToTerminal(
               `🌐 Server ready at ${url}\r\n`
@@ -228,6 +238,8 @@ const WebContainerPreview = ({
         }
         setSetupError(errorMessage);
         setIsSetupInProgress(false);
+        // Allow the user to retry after a failure.
+        setupStartedRef.current = false;
         setLoadingState({
           transforming: false,
           mounting: false,
@@ -239,19 +251,20 @@ const WebContainerPreview = ({
     }
 
     setupContainer();
-  }, [instance, templateData, isSetupComplete, isSetupInProgress]);
 
-  useEffect(() => {
-    return () => {};
-  }, []);
+    return () => {
+      // Detach the server-ready listener so it doesn't accumulate across re-runs.
+      unsubscribeServerReady?.();
+    };
+  }, [instance]);
 
   if (isLoading) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="text-center space-y-4 max-w-md p-6 rounded-lg bg-gray-50 dark:bg-gray-900">
+        <div className="text-center space-y-4 max-w-md p-6 rounded-lg bg-muted">
           <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
           <h3 className="text-lg font-medium">Initializing WebContainer</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-muted-foreground">
             Setting up the environment for your project...
           </p>
         </div>
@@ -262,7 +275,7 @@ const WebContainerPreview = ({
   if (error || setupError) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-6 rounded-lg max-w-md">
+        <div className="bg-destructive/10 text-destructive p-6 rounded-lg max-w-md">
           <div className="flex items-center gap-2 mb-3">
             <XCircle className="h-5 w-5" />
             <h3 className="font-semibold">Error</h3>
@@ -276,9 +289,9 @@ const WebContainerPreview = ({
     if (stepIndex < currentStep) {
       return <CheckCircle className="h-5 w-5 text-green-500" />;
     } else if (stepIndex === currentStep) {
-      return <Loader2 className="h-5 w-5 animate-spin text-blue-500" />;
+      return <Loader2 className="h-5 w-5 animate-spin text-primary" />;
     } else {
-      return <div className="h-5 w-5 rounded-full border-2 border-gray-300" />;
+      return <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30" />;
     }
   };
 
@@ -292,8 +305,8 @@ const WebContainerPreview = ({
           isComplete
             ? "text-green-600"
             : isActive
-            ? "text-blue-600"
-            : "text-gray-500"
+            ? "text-primary"
+            : "text-muted-foreground"
         }`}
       >
         {label}
@@ -305,7 +318,7 @@ const WebContainerPreview = ({
     <div className="h-full w-full flex flex-col">
       {!previewUrl ? (
         <div className="h-full flex flex-col">
-          <div className="w-full max-w-md p-6 m-5 rounded-lg bg-white dark:bg-zinc-800 shadow-sm mx-auto">
+          <div className="w-full max-w-md p-6 m-5 rounded-lg bg-card border shadow-sm mx-auto">
             <Progress
               value={(currentStep / totalSteps) * 100}
               className="h-2 mb-6"
