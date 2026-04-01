@@ -3,7 +3,7 @@ import Google from "next-auth/providers/google"
 import type {NextAuthConfig} from "next-auth"  //just for ts
 
 export default {
-  secret: process.env.AUTH_SECRET ?? process.env.BETTER_AUTH_SECRET,
+  secret: process.env.AUTH_SECRET,
   pages: {
     signIn: "/auth/sign-in",
   },

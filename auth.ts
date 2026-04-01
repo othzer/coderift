@@ -77,7 +77,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             return true;
         },
 
-        async jwt({token}){
+        async jwt({token, trigger}){
+            // Only hit the DB at sign-in (or an explicit session update), not on
+            // every request. Once the id/role are baked into the token they persist,
+            // so this avoids a DB round-trip on every navigation.
+            if(token.id && trigger !== "update") return token;
+
             if(!token.email) return token;
 
             const existingUser = await db.user.findUnique({
@@ -86,7 +91,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 },
             });
 
-            if(!existingUser) return token; //return token;
+            if(!existingUser) return token;
 
             //adding user data to token
             token.id = existingUser.id;

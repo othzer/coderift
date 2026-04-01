@@ -27,10 +27,16 @@ const AddNewButton = () => {
   })=>{
     setSelectedTemplate(data);
 
-    const res = await createProject(data);
-    toast.success("Playground created successfully");
-    setIsModalOpen(false);
-    router.push(`/playground/${res?.id}`);
+    try {
+      const res = await createProject(data);
+      if (!res?.id) throw new Error("No playground returned");
+      toast.success("Playground created successfully");
+      setIsModalOpen(false);
+      router.push(`/playground/${res.id}`);
+    } catch (error) {
+      console.error("Failed to create playground:", error);
+      toast.error("Failed to create playground");
+    }
   }
 
   const handleImportGithub = async (data: { repoUrl: string; title?: string }) => {
@@ -44,22 +50,21 @@ const AddNewButton = () => {
     <>
       <div
         onClick={() => setIsModalOpen(true)}
-        className="group px-6 py-6 flex flex-row justify-between items-center border rounded-lg bg-muted cursor-pointer 
+        className="group px-6 py-6 flex flex-row justify-between items-center border rounded-lg bg-card cursor-pointer
         transition-all duration-300 ease-in-out
-        hover:bg-background hover:border-[#6c63ff] hover:scale-[1.02]
-        shadow-[0_2px_10px_rgba(0,0,0,0.08)]
-        hover:shadow-[0_10px_30px_rgba(233,63,63,0.15)]"
+        hover:bg-card hover:border-primary hover:scale-[1.02]
+        shadow-sm hover:shadow-lg hover:shadow-primary/10"
       >
         <div className="flex flex-row justify-center items-start gap-4">
           <Button
             variant={"outline"}
-            className="flex justify-center items-center bg-white group-hover:bg-[#fff8f8] group-hover:border-[#6c63ff] group-hover:text-[#6c63ff] transition-colors duration-300"
+            className="flex justify-center items-center group-hover:border-primary group-hover:text-primary transition-colors duration-300"
             size={"icon"}
           >
             <Plus size={30} className="transition-transform duration-300 group-hover:rotate-90" />
           </Button>
           <div className="flex flex-col">
-            <h1 className="text-xl font-bold text-[#6c63ff]">Add New</h1>
+            <h1 className="text-xl font-bold text-primary">Add New</h1>
             <p className="text-sm text-muted-foreground max-w-[220px]">Create a new playground</p>
           </div>
         </div>

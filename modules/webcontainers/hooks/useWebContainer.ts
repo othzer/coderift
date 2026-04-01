@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { WebContainer } from "@webcontainer/api";
 import { TemplateFolder } from "@/modules/playground/lib/path-to-json";
 
@@ -12,7 +12,7 @@ interface UseWebContaierReturn {
   error: string | null;
   instance: WebContainer | null;
   writeFileSync: (path: string, content: string) => Promise<void>;
-  destory: () => void;
+  destroy: () => void;
 }
 
 export const useWebContainer = ({
@@ -22,6 +22,10 @@ export const useWebContainer = ({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [instance, setInstance] = useState<WebContainer | null>(null);
+  // Keep the booted instance in a ref so the cleanup function tears down the
+  // *actual* instance instead of a stale closure value (which was always null).
+  // WebContainer only allows one booted instance per page, so this matters.
+  const instanceRef = useRef<WebContainer | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -30,8 +34,13 @@ export const useWebContainer = ({
       try {
         const webcontainerInstance = await WebContainer.boot();
 
-        if (!mounted) return;
+        if (!mounted) {
+          // Component unmounted before boot resolved — tear down immediately.
+          webcontainerInstance.teardown();
+          return;
+        }
 
+        instanceRef.current = webcontainerInstance;
         setInstance(webcontainerInstance);
         setIsLoading(false);
       } catch (error) {
@@ -51,8 +60,9 @@ export const useWebContainer = ({
 
     return () => {
       mounted = false;
-      if (instance) {
-        instance.teardown();
+      if (instanceRef.current) {
+        instanceRef.current.teardown();
+        instanceRef.current = null;
       }
     };
   }, []);
@@ -82,13 +92,14 @@ export const useWebContainer = ({
     [instance]
   );
 
-  const destory = useCallback(()=>{
-    if(instance){
-        instance.teardown()
+  const destroy = useCallback(()=>{
+    if(instanceRef.current){
+        instanceRef.current.teardown()
+        instanceRef.current = null;
         setInstance(null);
         setServerUrl(null)
     }
-  },[instance])
+  },[])
 
-  return {serverUrl , isLoading , error , instance , writeFileSync , destory}
+  return {serverUrl , isLoading , error , instance , writeFileSync , destroy}
 };
