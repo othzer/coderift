@@ -37,9 +37,10 @@ import WebContainerPreview from "@/modules/webcontainers/components/webcontainer
 import { useWebContainer } from "@/modules/webcontainers/hooks/useWebContainer";
 import {
   AlertCircle,
-  Bot,
+  Check,
   FileText,
   FolderOpen,
+  Loader2,
   Save,
   Settings,
   X,
@@ -57,6 +58,8 @@ import { toast } from "sonner";
 const MainPlaygroundPage = () => {
   const { id } = useParams<{ id: string }>();
   const [isPreviewVisible, setIsPreviewVisible] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
   const { playgroundData, templateData, isLoading, error, saveTemplateData } =
     usePlayground(id);
@@ -167,8 +170,7 @@ const MainPlaygroundPage = () => {
       );
     },
     [handleRenameFolder, saveTemplateData]
-  );MainPlaygroundPage
-
+  );
 
   const activeFile = openFiles.find((file) => file.id === activeFileId);
   const hasUnsavedChanges = openFiles.some((file) => file.hasUnsavedChanges);
@@ -178,7 +180,8 @@ const MainPlaygroundPage = () => {
   };
 
   const handleSave = useCallback(
-    async (fileId?: string) => {
+    async (fileId?: string, options?: { silent?: boolean }) => {
+      const silent = options?.silent ?? false;
       const targetFileId = fileId || activeFileId;
       if (!targetFileId) return;
 
@@ -190,11 +193,14 @@ const MainPlaygroundPage = () => {
       if (!latestTemplateData) return;
 
       try {
+        setIsSaving(true);
         const filePath = findFilePath(fileToSave, latestTemplateData);
         if (!filePath) {
-          toast.error(
-            `Could not find path for file: ${fileToSave.filename}.${fileToSave.fileExtension}`
-          );
+          if (!silent) {
+            toast.error(
+              `Could not find path for file: ${fileToSave.filename}.${fileToSave.fileExtension}`
+            );
+          }
           return;
         }
 
@@ -229,8 +235,8 @@ const MainPlaygroundPage = () => {
           }
         }
 
-        const newTemplateData = await saveTemplateData(updatedTemplateData);
-        setTemplateData(newTemplateData || updatedTemplateData);
+        await saveTemplateData(updatedTemplateData);
+        setTemplateData(updatedTemplateData);
 
         // Update open files
         const updatedOpenFiles = openFiles.map((f) =>
@@ -244,16 +250,23 @@ const MainPlaygroundPage = () => {
             : f
         );
         setOpenFiles(updatedOpenFiles);
+        setLastSavedAt(new Date());
 
-      toast.success(
-          `Saved ${fileToSave.filename}.${fileToSave.fileExtension}`
-        );
+        if (!silent) {
+          toast.success(
+            `Saved ${fileToSave.filename}.${fileToSave.fileExtension}`
+          );
+        }
       } catch (error) {
         console.error("Error saving file:", error);
-        toast.error(
-          `Failed to save ${fileToSave.filename}.${fileToSave.fileExtension}`
-        );
+        if (!silent) {
+          toast.error(
+            `Failed to save ${fileToSave.filename}.${fileToSave.fileExtension}`
+          );
+        }
         throw error;
+      } finally {
+        setIsSaving(false);
       }
     },
     [
@@ -295,15 +308,26 @@ const MainPlaygroundPage = () => {
      return () => window.removeEventListener("keydown", handleKeyDown);
   },[handleSave]);
 
+  // Debounced autosave: save the active file 1.5s after the user stops typing.
+  // Silent so it doesn't spam toasts; the header indicator reflects the state.
+  useEffect(() => {
+    if (!activeFile?.hasUnsavedChanges) return;
+    const fileId = activeFile.id;
+    const timer = setTimeout(() => {
+      handleSave(fileId, { silent: true }).catch(() => {});
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [activeFile?.content, activeFile?.id, activeFile?.hasUnsavedChanges, handleSave]);
+
 
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-4rem)] p-4">
-        <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
-        <h2 className="text-xl font-semibold text-red-600 mb-2">
+        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+        <h2 className="text-xl font-semibold text-destructive mb-2">
           Something went wrong
         </h2>
-        <p className="text-gray-600 mb-4">{error}</p>
+        <p className="text-muted-foreground mb-4">{error}</p>
         <Button onClick={() => window.location.reload()} variant="destructive">
           Try Again
         </Button>
@@ -378,9 +402,21 @@ const MainPlaygroundPage = () => {
                 <h1 className="text-sm font-medium">
                   {playgroundData?.title || "Code Playground"}
                 </h1>
-                <p className="text-xs text-muted-foreground">
-                  {openFiles.length} File(s) Open
-                  {hasUnsavedChanges && " • Unsaved changes"}
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <span>{openFiles.length} File(s) Open</span>
+                  {isSaving ? (
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      • <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+                    </span>
+                  ) : hasUnsavedChanges ? (
+                    <span className="text-amber-600 dark:text-amber-500">
+                      • Unsaved changes
+                    </span>
+                  ) : lastSavedAt ? (
+                    <span className="flex items-center gap-1 text-green-600 dark:text-green-500">
+                      • <Check className="h-3 w-3" /> All changes saved
+                    </span>
+                  ) : null}
                 </p>
               </div>
 
@@ -390,7 +426,7 @@ const MainPlaygroundPage = () => {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={()=>handleSave}
+                      onClick={() => handleSave()}
                       disabled={!activeFile || !activeFile.hasUnsavedChanges}
                     >
                       <Save className="h-4 w-4" />
@@ -417,6 +453,7 @@ const MainPlaygroundPage = () => {
                 isEnabled={aiSuggestions.isEnabled}
                 onToggle={aiSuggestions.toggleEnabled}
                 suggestionLoading={aiSuggestions.isLoading}
+                playgroundId={id}
                />
 
                 <DropdownMenu>
@@ -437,9 +474,6 @@ const MainPlaygroundPage = () => {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button variant={"default"} size={"icon"}>
-                  <Bot className="size-4"/>
-                </Button>
               </div>
             </div>
           </header>
@@ -532,10 +566,10 @@ const MainPlaygroundPage = () => {
               </div> 
             ) : (
               <div className="flex flex-col h-full items-center justify-center text-muted-foreground gap-4">
-                <FileText className="h-16 w-16 text-gray-300" />
+                <FileText className="h-16 w-16 text-muted-foreground/40" />
                 <div className="text-center">
                   <p className="text-lg font-medium">No files open</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-muted-foreground">
                     Select a file from the sidebar to start editing
                   </p>
                 </div>

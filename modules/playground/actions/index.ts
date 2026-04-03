@@ -5,6 +5,31 @@ import { currentUser } from "@/modules/auth/actions";
 import { TemplateFolder } from "../lib/path-to-json";
 
 
+// Public, unauthenticated read used by the shareable /share/[id] view.
+// Only ever returns a playground that has been explicitly made public.
+export const getPublicPlaygroundById = async (id: string) => {
+    try {
+        const playground = await db.playground.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                title: true,
+                template: true,
+                isPublic: true,
+                templateFiles: { select: { content: true } },
+                user: { select: { name: true, image: true } },
+            },
+        });
+
+        if (!playground || !playground.isPublic) return null;
+
+        return playground;
+    } catch (error) {
+        console.error(error);
+        return null;
+    }
+};
+
 export const getPlaygroundById = async(id:string)=>{
     const user = await currentUser();
     if (!user?.id) return null;

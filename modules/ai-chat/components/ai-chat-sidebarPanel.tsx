@@ -47,7 +47,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import "katex/dist/katex.min.css";
 import Image from "next/image";
-import Stream from "stream";
+import { CHAT_MODELS, DEFAULT_CHAT_MODEL } from "@/lib/ai-models";
+import { getChatHistory, clearChatHistory } from "@/modules/ai-chat/actions";
 
 interface ChatMessage {
     role: "user" | "assistant";
@@ -62,7 +63,7 @@ interface ChatMessage {
 interface AIChatSidePanelProps {
     isOpen: boolean;
     onClose: () => void;
-
+    playgroundId?: string;
 }
 
 const MessageTypeIndicator: React.FC<{
@@ -111,7 +112,7 @@ const MessageTypeIndicator: React.FC<{
 export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
     isOpen,
     onClose,
-
+    playgroundId,
 }) => {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState("");
@@ -123,7 +124,7 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
     const [filterType, setFilterType] = useState<string>("all");
     const [autoSave, setAutoSave] = useState(true);
     const [streamResponse, setStreamResponse] = useState(true);
-    const [model, setModel] = useState<string>("gpt-6");
+    const [model, setModel] = useState<string>(DEFAULT_CHAT_MODEL);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -139,6 +140,33 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
         }, 100);
         return () => clearTimeout(timeoutId);
     }, [messages, isLoading]);
+
+    // Load this playground's saved conversation once on mount.
+    useEffect(() => {
+        if (!playgroundId) return;
+        let cancelled = false;
+        getChatHistory(playgroundId).then((history) => {
+            if (cancelled || history.length === 0) return;
+            setMessages(
+                history.map((m) => ({
+                    role: m.role === "assistant" ? "assistant" : "user",
+                    content: m.content,
+                    id: m.id,
+                    timestamp: new Date(m.createdAt),
+                }))
+            );
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [playgroundId]);
+
+    const handleClearMessages = async () => {
+        setMessages([]);
+        if (playgroundId) {
+            await clearChatHistory(playgroundId);
+        }
+    };
 
     const getChatModePrompt = (mode: string, content: string) => {
         switch (mode) {
@@ -188,6 +216,7 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
         },
         body: JSON.stringify({
           message: contextualMessage,
+          displayContent: input.trim(),
           history: messages.slice(-10).map((msg) => ({
             role: msg.role,
             content: msg.content,
@@ -195,12 +224,13 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
           stream: streamResponse,
           mode: chatMode,
           model,
+          playgroundId,
         }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
+      if (response.ok) {
         setMessages((prev) => [
           ...prev,
           {
@@ -214,11 +244,14 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
           },
         ]);
       } else {
+        // Surface the server's actual message (e.g. the "not configured" 503)
+        // instead of a generic apology, so the failure is actionable.
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
             content:
+              data.error ||
               "Sorry, I encountered an error while processing your request. Please try again.",
             timestamp: new Date(),
             id: Date.now().toString(),
@@ -334,7 +367,7 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
                                             <Download className="h-4 w-4 mr-2" />
                                             Export Chat
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => setMessages([])}>
+                                        <DropdownMenuItem onClick={handleClearMessages}>
                                             Clear All Messages
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
@@ -391,10 +424,11 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
                                             onChange={(e) => setModel(e.target.value)}
                                             className="bg-zinc-900/60 border border-zinc-800 rounded px-2 py-1 text-zinc-200 focus:outline-none"
                                         >
-                                            <option value="gpt-6">gpt-6</option>
-                                            <option value="codellama">codellama</option>
-                                            <option value="llama2">llama2</option>
-                                            <option value="qwen2.5-coder">qwen2.5-coder</option>
+                                            {CHAT_MODELS.map((m) => (
+                                                <option key={m.id} value={m.id}>
+                                                    {m.label}
+                                                </option>
+                                            ))}
                                         </select>
                                     </div>
                                     <div className="relative">
@@ -513,8 +547,12 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
                                                     remarkPlugins={[remarkGfm, remarkMath]}
                                                     rehypePlugins={[rehypeKatex]}
                                                     components={{
-                                                        code: ({ children, className, inline }) => {
-                                                            if (inline) {
+                                                        // react-markdown v10 no longer passes an `inline` prop; a
+                                                        // fenced code block carries a `language-*` className, so use
+                                                        // that to distinguish block code from inline code.
+                                                        code: ({ children, className }) => {
+                                                            const isBlock = /language-/.test(className || "");
+                                                            if (!isBlock) {
                                                                 return (
                                                                     <code className="bg-zinc-800 px-1 py-0.5 rounded text-sm">
                                                                         {children}

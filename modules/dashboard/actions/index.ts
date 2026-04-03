@@ -153,6 +153,20 @@ export const importGithubRepo = async (data: { repoUrl: string; title?: string }
     return playground;
 }
 
+export const togglePlaygroundVisibility = async (id: string, isPublic: boolean) => {
+    const user = await currentUser();
+    if (!user?.id) throw new Error("Unauthorized");
+
+    // Scoped by userId so a user can only change visibility of their own playground.
+    await db.playground.updateMany({
+        where: { id, userId: user.id },
+        data: { isPublic },
+    });
+
+    revalidatePath("/dashboard");
+    return { isPublic };
+};
+
 export const deleteProjectById = async(id: string)=>{
     const user = await currentUser();
     if (!user?.id) throw new Error("Unauthorized");
