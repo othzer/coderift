@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, provideZonelessChangeDetection, signal } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 
 @Component({
@@ -18,4 +18,8 @@ export class App {
   counter = signal(0);
 }
 
-bootstrapApplication(App);
+// No zone.js in this starter (polyfills: []), so change detection must be
+// explicitly zoneless or Angular throws NG0908 at bootstrap.
+bootstrapApplication(App, {
+  providers: [provideZonelessChangeDetection()],
+});
