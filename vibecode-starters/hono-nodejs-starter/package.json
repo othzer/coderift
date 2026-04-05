@@ -2,7 +2,6 @@
   "name": "hono-nodejs-starter",
   "type": "module",
   "scripts": {
-    "start": "tsx watch src/index.ts",
     "dev": "tsx watch src/index.ts"
   },
   "dependencies": {
