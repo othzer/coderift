@@ -166,7 +166,13 @@ const WebContainerPreview = ({
           );
         }
 
-        const installProcess = await instance.spawn("npm", ["install"]);
+        // --no-audit/--no-fund skip registry audit round-trips and cut noise;
+        // the mounted package-lock.json lets npm skip dependency resolution.
+        const installProcess = await instance.spawn("npm", [
+          "install",
+          "--no-audit",
+          "--no-fund",
+        ]);
 
         installProcess.output.pipeTo(
           new WritableStream({
