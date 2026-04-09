@@ -68,6 +68,11 @@ const WebContainerPreview = ({
     // Holds the server-ready unsubscribe so we can detach it on cleanup and
     // never accumulate duplicate listeners.
     let unsubscribeServerReady: (() => void) | undefined;
+    // True once the dev server has come up; a later non-zero exit (e.g. the
+    // user Ctrl+C-ing it in the terminal) should not be reported as a failure.
+    let serverBecameReady = false;
+    // Set on cleanup so a late process-exit doesn't setState after unmount.
+    let disposed = false;
 
     async function setupContainer() {
       if (!instance || setupStartedRef.current) return;
@@ -161,7 +166,13 @@ const WebContainerPreview = ({
           );
         }
 
-        const installProcess = await instance.spawn("npm", ["install"]);
+        // --no-audit/--no-fund skip registry audit round-trips and cut noise;
+        // the mounted package-lock.json lets npm skip dependency resolution.
+        const installProcess = await instance.spawn("npm", [
+          "install",
+          "--no-audit",
+          "--no-fund",
+        ]);
 
         installProcess.output.pipeTo(
           new WritableStream({
@@ -210,6 +221,7 @@ const WebContainerPreview = ({
               `🌐 Server ready at ${url}\r\n`
             );
           }
+          serverBecameReady = true;
           setPreviewUrl(url);
           setLoadingState((prev) => ({
             ...prev,
@@ -230,6 +242,27 @@ const WebContainerPreview = ({
             },
           })
         );
+
+        // If `npm run start` exits before the server ever came up (missing
+        // script, crashed dev server, bad config), surface it as an error.
+        // Without this the UI spins on "Starting development server" forever.
+        startProcess.exit.then((exitCode) => {
+          if (disposed || serverBecameReady || exitCode === 0) return;
+          const message = `The start command exited with code ${exitCode} before the dev server came up. Check the terminal output above for the underlying error (usually a missing "start" script or a crash during startup).`;
+          if (terminalRef.current?.writeToTerminal) {
+            terminalRef.current.writeToTerminal(`❌ ${message}\r\n`);
+          }
+          setSetupError(message);
+          setIsSetupInProgress(false);
+          setupStartedRef.current = false;
+          setLoadingState({
+            transforming: false,
+            mounting: false,
+            installing: false,
+            starting: false,
+            ready: false,
+          });
+        });
       } catch (err) {
         console.error("Error setting up container:", err);
         const errorMessage = err instanceof Error ? err.message : String(err);
@@ -253,6 +286,7 @@ const WebContainerPreview = ({
     setupContainer();
 
     return () => {
+      disposed = true;
       // Detach the server-ready listener so it doesn't accumulate across re-runs.
       unsubscribeServerReady?.();
     };

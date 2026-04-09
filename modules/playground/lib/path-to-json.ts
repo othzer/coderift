@@ -63,7 +63,9 @@ export async function scanTemplateDirectory(
   // Set default options
   const defaultOptions: ScanOptions = {
     ignoreFiles: [
-      'package-lock.json',
+      // NOTE: package-lock.json is intentionally NOT ignored. Mounting it into
+      // the WebContainer lets `npm install` skip dependency resolution, which
+      // cuts install time substantially on every playground boot.
       'yarn.lock',
       '.DS_Store',
       'thumbs.db',
