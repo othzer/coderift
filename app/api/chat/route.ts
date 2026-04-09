@@ -3,9 +3,22 @@ import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import {
   DEFAULT_CHAT_MODEL,
+  getRequestTokenBudget,
   isValidChatModel,
 } from "@/lib/ai-models";
 import { rateLimit } from "@/lib/rate-limit";
+import {
+  applyAttachmentBudget,
+  buildMessageWithAttachments,
+  estimateTokens,
+  type ChatAttachment,
+} from "@/modules/ai-chat/lib/attachments";
+
+// Completion sizing. Groq counts prompt + `max_tokens` against one per-minute
+// budget, so the reply allowance has to flex with how big the prompt is.
+const MIN_COMPLETION_TOKENS = 1_024;
+const MAX_COMPLETION_TOKENS = 4_096;
+const TOKEN_SAFETY_MARGIN = 250;
 
 // Per-user limit so one account can't hammer the AI backend / burn the key.
 const CHAT_RATE_LIMIT = 20;
@@ -28,6 +41,8 @@ interface ChatRequest {
   // The raw text the user typed (message may be wrapped with a mode prompt).
   // Persisted so reloaded history matches what the UI shows.
   displayContent?: string;
+  // Project files the user attached for context.
+  attachments?: ChatAttachment[];
 }
 
 const SYSTEM_PROMPT = `You are Rigpaz AI, an expert coding assistant embedded in an in-browser code editor.
@@ -51,9 +66,18 @@ interface GroqResult {
   tokens?: number;
 }
 
+// Error thrown when the AI provider itself rejects the request, carrying the
+// provider's status + message so the route can surface it to the user.
+interface UpstreamError extends Error {
+  isUpstream?: boolean;
+  status?: number;
+  providerMessage?: string;
+}
+
 async function generateAIResponse(
   messages: ChatMessage[],
-  model: string
+  model: string,
+  maxTokens: number
 ): Promise<GroqResult> {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
@@ -70,7 +94,8 @@ async function generateAIResponse(
       model,
       messages: [{ role: "system", content: SYSTEM_PROMPT }, ...messages],
       temperature: 0.6,
-      max_tokens: 1024,
+      // Sized by the caller from the model's remaining token budget.
+      max_tokens: maxTokens,
       top_p: 0.9,
     }),
   });
@@ -78,7 +103,22 @@ async function generateAIResponse(
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
     console.error(`Groq API error (${response.status}):`, detail);
-    throw new Error(`Upstream AI error (${response.status})`);
+    // Extract the provider's own message (e.g. "Organization has been
+    // restricted") so we can show the user something actionable instead of a
+    // generic failure.
+    let providerMessage = "";
+    try {
+      providerMessage = JSON.parse(detail)?.error?.message ?? "";
+    } catch {
+      /* non-JSON body */
+    }
+    const err: UpstreamError = new Error(
+      providerMessage || `Upstream AI error (${response.status})`
+    );
+    err.isUpstream = true;
+    err.status = response.status;
+    err.providerMessage = providerMessage;
+    throw err;
   }
 
   const data = await response.json();
@@ -88,8 +128,16 @@ async function generateAIResponse(
     throw new Error("No response from AI model");
   }
 
+  // finish_reason "length" means the model hit the token ceiling and the reply
+  // (often mid code block) is incomplete. Say so instead of silently returning
+  // a half-written file.
+  const truncated = data?.choices?.[0]?.finish_reason === "length";
+  const body = truncated
+    ? `${content.trim()}\n\n---\n\n_⚠️ Response was cut off at the length limit. Ask me to continue and I'll pick up where I left off._`
+    : content.trim();
+
   return {
-    content: content.trim(),
+    content: body,
     model: data.model ?? model,
     tokens: data.usage?.total_tokens,
   };
@@ -118,7 +166,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body: ChatRequest = await req.json();
-    const { message, history = [], model, playgroundId, displayContent } = body;
+    const { message, history = [], model, playgroundId, displayContent, attachments } = body;
 
     // Validate input
     if (!message || typeof message !== "string") {
@@ -127,6 +175,21 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Re-enforce the attachment caps server-side (client also enforces them for
+    // UX), then fold the accepted files into the message sent to the model.
+    const rawAttachments: ChatAttachment[] = Array.isArray(attachments)
+      ? attachments.filter(
+          (a) =>
+            a &&
+            typeof a === "object" &&
+            typeof a.path === "string" &&
+            typeof a.content === "string"
+        )
+      : [];
+    const { accepted: acceptedAttachments } = applyAttachmentBudget(rawAttachments);
+    const messageForModel = buildMessageWithAttachments(message, acceptedAttachments);
+    const attachmentPaths = acceptedAttachments.map((a) => a.path);
 
     // Only allow known model ids; fall back to the default otherwise.
     const selectedModel =
@@ -146,14 +209,54 @@ export async function POST(req: NextRequest) {
         )
       : [];
 
-    const recentHistory = validHistory.slice(-10);
+    // --- Token budgeting ---------------------------------------------------
+    // The whole request (prompt + reserved completion) has to fit the model's
+    // per-request budget. Drop the oldest history turns to make room, and size
+    // the reply allowance to whatever is left.
+    const budget = getRequestTokenBudget(selectedModel);
+    const fixedTokens =
+      estimateTokens(SYSTEM_PROMPT) + estimateTokens(messageForModel);
+    const historyTokens = (msgs: ChatMessage[]) =>
+      msgs.reduce((n, m) => n + estimateTokens(m.content), 0);
+
+    let recentHistory = validHistory.slice(-10);
+    const inputTokens = () => fixedTokens + historyTokens(recentHistory);
+    const floor = MIN_COMPLETION_TOKENS + TOKEN_SAFETY_MARGIN;
+
+    while (recentHistory.length > 0 && inputTokens() + floor > budget) {
+      recentHistory = recentHistory.slice(1); // drop the oldest turn
+    }
+
+    // Even with no history it doesn't fit — the message/attachments are simply
+    // too big for this model. Say so precisely instead of letting Groq 413.
+    if (inputTokens() + floor > budget) {
+      return NextResponse.json(
+        {
+          error:
+            `This message is too large for ${selectedModel} — roughly ${inputTokens()} tokens, ` +
+            `and the per-request budget is ${budget}. Remove an attachment (or attach a smaller file), ` +
+            `or switch to a model with a larger budget.`,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 413 }
+      );
+    }
+
+    const maxTokens = Math.max(
+      MIN_COMPLETION_TOKENS,
+      Math.min(MAX_COMPLETION_TOKENS, budget - inputTokens() - TOKEN_SAFETY_MARGIN)
+    );
 
     const messages: ChatMessage[] = [
       ...recentHistory,
-      { role: "user", content: message },
+      { role: "user", content: messageForModel },
     ];
 
-    const aiResponse = await generateAIResponse(messages, selectedModel);
+    const aiResponse = await generateAIResponse(
+      messages,
+      selectedModel,
+      maxTokens
+    );
 
     // Persist the exchange so the conversation survives a reload. Best-effort:
     // a DB hiccup must not fail the chat response the user already received.
@@ -169,6 +272,7 @@ export async function POST(req: NextRequest) {
                 typeof displayContent === "string" && displayContent.trim()
                   ? displayContent
                   : message,
+              attachments: attachmentPaths,
             },
             {
               userId: session.user.id,
@@ -201,6 +305,22 @@ export async function POST(req: NextRequest) {
           timestamp: new Date().toISOString(),
         },
         { status: 503 }
+      );
+    }
+
+    // The AI provider rejected the request (bad key, restricted account, model
+    // gone, etc.). Pass its message through so the user knows it's a provider/
+    // account issue, not a bug in the app.
+    const upstream = error as UpstreamError;
+    if (upstream?.isUpstream) {
+      return NextResponse.json(
+        {
+          error: upstream.providerMessage
+            ? `AI provider error: ${upstream.providerMessage}`
+            : "The AI provider rejected the request. Please try again later.",
+          timestamp: new Date().toISOString(),
+        },
+        { status: upstream.status === 429 ? 429 : 502 }
       );
     }
 

@@ -18,9 +18,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Rigpaz | AI Vibe Code Editor",
+  title: "Rigpaz | AI-powered Code Editor",
   description:
-    "Rigpaz is an AI-powered vibe code editor — write, run, and preview code right in your browser.",
+    "Rigpaz is an AI-powered code editor — write, run, and preview code right in your browser.",
 };
 
 export default async function RootLayout({
