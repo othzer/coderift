@@ -48,7 +48,6 @@ import {
     DropdownMenuTrigger,
     DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
-import "katex/dist/katex.min.css";
 import Image from "next/image";
 import { toast } from "sonner";
 import {
