@@ -7,6 +7,7 @@ export interface StoredChatMessage {
   id: string;
   role: string;
   content: string;
+  attachments: string[];
   createdAt: Date;
 }
 
@@ -22,7 +23,7 @@ export const getChatHistory = async (
       where: { userId: user.id, playgroundId },
       orderBy: { createdAt: "asc" },
       take: 200,
-      select: { id: true, role: true, content: true, createdAt: true },
+      select: { id: true, role: true, content: true, attachments: true, createdAt: true },
     });
     return messages;
   } catch (error) {

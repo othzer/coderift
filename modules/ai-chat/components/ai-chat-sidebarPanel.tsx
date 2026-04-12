@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, isValidElement } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -26,6 +26,9 @@ import {
     Search,
     Filter,
     Download,
+    Paperclip,
+    FileText,
+    Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
@@ -45,10 +48,32 @@ import {
     DropdownMenuTrigger,
     DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
-import "katex/dist/katex.min.css";
 import Image from "next/image";
+import { toast } from "sonner";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command";
 import { CHAT_MODELS, DEFAULT_CHAT_MODEL } from "@/lib/ai-models";
 import { getChatHistory, clearChatHistory } from "@/modules/ai-chat/actions";
+import { useFileExplorer } from "@/modules/playground/hooks/useFileExplorer";
+import { findFilePath } from "@/modules/playground/lib";
+import {
+    flattenProjectFiles,
+    MAX_ATTACHMENTS,
+    MAX_CHARS_PER_FILE,
+    MAX_TOTAL_CHARS,
+    type AttachableFile,
+} from "@/modules/ai-chat/lib/attachments";
 
 interface ChatMessage {
     role: "user" | "assistant";
@@ -58,6 +83,7 @@ interface ChatMessage {
     type?: "chat" | "code_review" | "suggestion" | "error_fix" | "optimization";
     tokens?: number;
     model?: string;
+    attachments?: string[];
 }
 
 interface AIChatSidePanelProps {
@@ -109,6 +135,74 @@ const MessageTypeIndicator: React.FC<{
     );
 };
 
+// react-markdown hands us React nodes, not a raw string, so flatten the tree
+// back to text before copying.
+function extractText(node: React.ReactNode): string {
+    if (node === null || node === undefined || typeof node === "boolean") return "";
+    if (typeof node === "string" || typeof node === "number") return String(node);
+    if (Array.isArray(node)) return node.map(extractText).join("");
+    if (isValidElement(node)) {
+        return extractText((node.props as { children?: React.ReactNode }).children);
+    }
+    return "";
+}
+
+// A fenced code block with a language label and its own copy button.
+const CodeBlock: React.FC<{
+    className?: string;
+    children?: React.ReactNode;
+}> = ({ className, children }) => {
+    const [copied, setCopied] = useState(false);
+    const code = extractText(children).replace(/\n$/, "");
+    const language = /language-(\w+)/.exec(className || "")?.[1] ?? "";
+
+    // Reset the "Copied" state, cleaning up if the message unmounts first.
+    useEffect(() => {
+        if (!copied) return;
+        const timer = setTimeout(() => setCopied(false), 2000);
+        return () => clearTimeout(timer);
+    }, [copied]);
+
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(code);
+            setCopied(true);
+        } catch (error) {
+            console.error("Failed to copy code:", error);
+            toast.error("Failed to copy to clipboard");
+        }
+    };
+
+    return (
+        <div className="my-4 max-w-full overflow-hidden rounded-lg border border-zinc-700/50 bg-zinc-800">
+            <div className="flex items-center justify-between border-b border-zinc-700/50 bg-zinc-800/80 px-3 py-1.5">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+                    {language || "code"}
+                </span>
+                <button
+                    type="button"
+                    onClick={handleCopy}
+                    aria-label="Copy code"
+                    className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-100"
+                >
+                    {copied ? (
+                        <>
+                            <Check className="h-3 w-3" /> Copied
+                        </>
+                    ) : (
+                        <>
+                            <Copy className="h-3 w-3" /> Copy
+                        </>
+                    )}
+                </button>
+            </div>
+            <pre className="max-w-full overflow-x-auto p-4 text-sm text-zinc-100">
+                <code className={className}>{children}</code>
+            </pre>
+        </div>
+    );
+};
+
 export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
     isOpen,
     onClose,
@@ -125,6 +219,66 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
     const [autoSave, setAutoSave] = useState(true);
     const [streamResponse, setStreamResponse] = useState(true);
     const [model, setModel] = useState<string>(DEFAULT_CHAT_MODEL);
+
+    // --- File attachments ---
+    const [attachedPaths, setAttachedPaths] = useState<string[]>([]);
+    const [isPickerOpen, setIsPickerOpen] = useState(false);
+    const templateData = useFileExplorer((s) => s.templateData);
+    const openFiles = useFileExplorer((s) => s.openFiles);
+    const activeFileId = useFileExplorer((s) => s.activeFileId);
+
+    // All attachable (text) files in the current project, flattened to paths.
+    const projectFiles = useMemo(
+        () => flattenProjectFiles(templateData),
+        [templateData]
+    );
+    const filesByPath = useMemo(
+        () => new Map(projectFiles.map((f) => [f.path, f])),
+        [projectFiles]
+    );
+    // Resolve attached paths to files live, so content stays current and
+    // deleted files drop out automatically.
+    const attachedFiles = useMemo(
+        () =>
+            attachedPaths
+                .map((p) => filesByPath.get(p))
+                .filter((f): f is AttachableFile => Boolean(f)),
+        [attachedPaths, filesByPath]
+    );
+    const attachedChars = useMemo(
+        () =>
+            attachedFiles.reduce(
+                (n, f) => n + Math.min(f.content.length, MAX_CHARS_PER_FILE),
+                0
+            ),
+        [attachedFiles]
+    );
+    // The file open in the editor, for the "attach current file" shortcut.
+    const activeFilePath = useMemo(() => {
+        if (!activeFileId || !templateData) return null;
+        const active = openFiles.find((f) => f.id === activeFileId);
+        if (!active) return null;
+        return findFilePath(active, templateData);
+    }, [activeFileId, openFiles, templateData]);
+
+    const attachPath = (path: string) => {
+        if (attachedPaths.includes(path)) return;
+        const file = filesByPath.get(path);
+        if (!file) return;
+        if (attachedPaths.length >= MAX_ATTACHMENTS) {
+            toast.error(`You can attach up to ${MAX_ATTACHMENTS} files.`);
+            return;
+        }
+        const addChars = Math.min(file.content.length, MAX_CHARS_PER_FILE);
+        if (attachedChars + addChars > MAX_TOTAL_CHARS) {
+            toast.error("That file would exceed the attachment size limit.");
+            return;
+        }
+        setAttachedPaths((prev) => [...prev, path]);
+    };
+
+    const removePath = (path: string) =>
+        setAttachedPaths((prev) => prev.filter((p) => p !== path));
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -153,6 +307,7 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
                     content: m.content,
                     id: m.id,
                     timestamp: new Date(m.createdAt),
+                    attachments: m.attachments?.length ? m.attachments : undefined,
                 }))
             );
         });
@@ -194,16 +349,27 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
         ? "error_fix"
         : "optimization";
 
+    // Snapshot the attachments for this message, then reset the composer's
+    // attachments (per-message semantics — re-attach for the next message).
+    const outgoingAttachments = attachedFiles.map((f) => ({
+      path: f.path,
+      content: f.content,
+    }));
+
     const newMessage: ChatMessage = {
       role: "user",
       content: input.trim(),
       timestamp: new Date(),
       id: Date.now().toString(),
       type: messageType,
+      attachments: outgoingAttachments.length
+        ? outgoingAttachments.map((a) => a.path)
+        : undefined,
     };
 
     setMessages((prev) => [...prev, newMessage]);
     setInput("");
+    setAttachedPaths([]);
     setIsLoading(true);
 
     try {
@@ -225,6 +391,7 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
           mode: chatMode,
           model,
           playgroundId,
+          attachments: outgoingAttachments,
         }),
       });
 
@@ -528,7 +695,10 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
 
                                         <div
                                             className={cn(
-                                                "max-w-[85%] rounded-xl shadow-sm",
+                                                // min-w-0 lets this flex child shrink below its content
+                                                // width, which is what allows long code lines to scroll
+                                                // inside the block instead of overflowing the bubble.
+                                                "max-w-[85%] min-w-0 rounded-xl shadow-sm",
                                                 msg.role === "user"
                                                     ? "bg-zinc-900/70 text-white p-4 rounded-br-md"
                                                     : "bg-zinc-900/80 backdrop-blur-sm text-zinc-100 p-5 rounded-bl-md border border-zinc-800/50"
@@ -542,7 +712,22 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
                                                 />
                                             )}
 
-                                            <div className="prose prose-invert prose-sm max-w-none">
+                                            {msg.attachments && msg.attachments.length > 0 && (
+                                                <div className="mb-2 flex flex-wrap gap-1.5">
+                                                    {msg.attachments.map((p) => (
+                                                        <span
+                                                            key={p}
+                                                            title={p}
+                                                            className="inline-flex items-center gap-1 rounded-md bg-zinc-800/80 border border-zinc-700/60 px-1.5 py-0.5 text-[11px] text-zinc-300 max-w-[180px]"
+                                                        >
+                                                            <FileText className="h-3 w-3 shrink-0 text-zinc-400" />
+                                                            <span className="truncate">{p.split("/").pop()}</span>
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            <div className="prose prose-invert prose-sm max-w-none min-w-0">
                                                 <ReactMarkdown
                                                     remarkPlugins={[remarkGfm, remarkMath]}
                                                     rehypePlugins={[rehypeKatex]}
@@ -560,11 +745,9 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
                                                                 );
                                                             }
                                                             return (
-                                                                <div className="bg-zinc-800 rounded-lg p-4 my-4">
-                                                                    <pre className="text-sm text-zinc-100 overflow-x-auto">
-                                                                        <code className={className}>{children}</code>
-                                                                    </pre>
-                                                                </div>
+                                                                <CodeBlock className={className}>
+                                                                    {children}
+                                                                </CodeBlock>
                                                             );
                                                         },
                                                     }}
@@ -641,7 +824,91 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
                         onSubmit={handleSendMessage}
                         className="shrink-0 p-4 border-t border-zinc-800 bg-zinc-900/80 backdrop-blur-sm"
                     >
-                        <div className="flex items-end gap-3">
+                        {/* Attached file chips */}
+                        {attachedFiles.length > 0 && (
+                            <div className="mb-2 flex flex-wrap items-center gap-1.5">
+                                {attachedFiles.map((f) => (
+                                    <span
+                                        key={f.path}
+                                        title={f.path}
+                                        className="inline-flex items-center gap-1 rounded-md bg-zinc-800 border border-zinc-700 px-2 py-1 text-xs text-zinc-300 max-w-[200px]"
+                                    >
+                                        <FileText className="h-3 w-3 shrink-0 text-zinc-400" />
+                                        <span className="truncate">{f.path.split("/").pop()}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => removePath(f.path)}
+                                            className="text-zinc-500 hover:text-zinc-200"
+                                            aria-label={`Remove ${f.path}`}
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </button>
+                                    </span>
+                                ))}
+                                <span className="ml-1 text-[10px] text-zinc-500">
+                                    {attachedFiles.length}/{MAX_ATTACHMENTS} files ·{" "}
+                                    {Math.round(attachedChars / 1000)}K/
+                                    {Math.round(MAX_TOTAL_CHARS / 1000)}K chars
+                                </span>
+                            </div>
+                        )}
+
+                        <div className="flex items-end gap-2">
+                            {/* Attach files */}
+                            <Popover open={isPickerOpen} onOpenChange={setIsPickerOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        disabled={isLoading}
+                                        title="Attach project files"
+                                        className="h-11 w-11 shrink-0 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+                                    >
+                                        <Paperclip className="h-4 w-4" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                    align="start"
+                                    side="top"
+                                    className="w-80 p-0"
+                                >
+                                    <Command>
+                                        <CommandInput placeholder="Attach a file…" />
+                                        <CommandList>
+                                            <CommandEmpty>No files found.</CommandEmpty>
+                                            {activeFilePath &&
+                                                filesByPath.has(activeFilePath) &&
+                                                !attachedPaths.includes(activeFilePath) && (
+                                                    <CommandGroup heading="Current file">
+                                                        <CommandItem
+                                                            value={`current ${activeFilePath}`}
+                                                            onSelect={() => attachPath(activeFilePath)}
+                                                        >
+                                                            <FileText className="mr-2 h-4 w-4 shrink-0" />
+                                                            <span className="truncate">{activeFilePath}</span>
+                                                        </CommandItem>
+                                                    </CommandGroup>
+                                                )}
+                                            <CommandGroup heading="Project files">
+                                                {projectFiles
+                                                    .filter((f) => !attachedPaths.includes(f.path))
+                                                    .map((f) => (
+                                                        <CommandItem
+                                                            key={f.path}
+                                                            value={f.path}
+                                                            onSelect={() => attachPath(f.path)}
+                                                        >
+                                                            <FileText className="mr-2 h-4 w-4 shrink-0" />
+                                                            <span className="truncate">{f.path}</span>
+                                                        </CommandItem>
+                                                    ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+
                             <div className="flex-1 relative">
                                 <Textarea
                                     placeholder={
