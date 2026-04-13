@@ -18,10 +18,35 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+const description =
+  "Rigpaz is an AI-powered code editor — write, run, and preview code right in your browser.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "Rigpaz | AI-powered Code Editor",
-  description:
-    "Rigpaz is an AI-powered code editor — write, run, and preview code right in your browser.",
+  description,
+  keywords: [
+    "online code editor",
+    "AI code editor",
+    "browser IDE",
+    "WebContainer",
+    "Monaco editor",
+    "Rigpaz",
+  ],
+  authors: [{ name: "otzr.labs" }],
+  openGraph: {
+    type: "website",
+    url: siteUrl,
+    siteName: "Rigpaz",
+    title: "Rigpaz | AI-powered Code Editor",
+    description,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Rigpaz | AI-powered Code Editor",
+    description,
+  },
 };
 
 export default async function RootLayout({
