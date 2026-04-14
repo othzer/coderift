@@ -22,7 +22,9 @@ export async function Header() {
     <div className="sticky top-0 right-0 left-0 z-50">
       <div className="flex w-full flex-col items-center justify-center">
         <div
-          className="relative flex w-full items-center justify-between rounded-b-[28px] border-x border-b border-[rgba(230,230,230,0.7)] bg-gradient-to-b from-white/80 via-gray-50/80 to-white/80 px-4 py-2.5 shadow-[0_2px_20px_-2px_rgba(0,0,0,0.08)] backdrop-blur-md transition-all duration-300 ease-in-out sm:max-w-[1200px] sm:min-w-[800px] dark:border-[rgba(70,70,70,0.7)] dark:from-zinc-900/80 dark:via-zinc-800/80 dark:to-zinc-900/80"
+          // No min-width: `w-full` already fills the bar, and a fixed 800px
+          // floor overflowed the viewport between 640px and 800px.
+          className="relative flex w-full items-center justify-between rounded-b-[28px] border-x border-b border-[rgba(230,230,230,0.7)] bg-gradient-to-b from-white/80 via-gray-50/80 to-white/80 px-4 py-2.5 shadow-[0_2px_20px_-2px_rgba(0,0,0,0.08)] backdrop-blur-md transition-all duration-300 ease-in-out sm:max-w-[1200px] dark:border-[rgba(70,70,70,0.7)] dark:from-zinc-900/80 dark:via-zinc-800/80 dark:to-zinc-900/80"
         >
           <div className="relative z-10 flex w-full items-center justify-between gap-2">
             {/* Logo + primary nav */}
@@ -47,21 +49,23 @@ export async function Header() {
               </nav>
             </div>
 
-            {/* Desktop actions */}
-            <div className="hidden items-center gap-3 sm:flex">
+            {/* Desktop actions. Gated on the same `md` breakpoint as the nav
+                above, so there's no width where both the links and the
+                hamburger are hidden. */}
+            <div className="hidden items-center gap-3 md:flex">
               <CommandPaletteTrigger />
               <ThemeToggle />
-              <Link href="/dashboard">
-                <Button variant="brand" size="sm">
+              <Button asChild variant="brand" size="sm">
+                <Link href="/dashboard">
                   {isLoggedIn ? "Dashboard" : "Get started"}
                   <ArrowUpRight className="size-3.5" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
               {isLoggedIn && <UserButton />}
             </div>
 
             {/* Mobile actions */}
-            <div className="flex items-center gap-1 sm:hidden">
+            <div className="flex items-center gap-1 md:hidden">
               <ThemeToggle />
               {isLoggedIn && <UserButton />}
               <MobileNav links={NAV_LINKS} isLoggedIn={isLoggedIn} />

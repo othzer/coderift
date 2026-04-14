@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import { ThemeProvider } from "@/components/providers/theme-providers";
 import { Toaster } from "@/components/ui/sonner";
 import { CommandPalette } from "@/components/command-palette";
+import { siteConfig } from "@/lib/site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,14 +19,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-const description =
-  "Rigpaz is an AI-powered code editor — write, run, and preview code right in your browser.";
-
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title: "Rigpaz | AI-powered Code Editor",
-  description,
+  metadataBase: new URL(siteConfig.url),
+  title: siteConfig.title,
+  description: siteConfig.description,
   keywords: [
     "online code editor",
     "AI code editor",
@@ -37,15 +34,15 @@ export const metadata: Metadata = {
   authors: [{ name: "otzr.labs" }],
   openGraph: {
     type: "website",
-    url: siteUrl,
-    siteName: "Rigpaz",
-    title: "Rigpaz | AI-powered Code Editor",
-    description,
+    url: siteConfig.url,
+    siteName: siteConfig.name,
+    title: siteConfig.title,
+    description: siteConfig.description,
   },
   twitter: {
     card: "summary_large_image",
-    title: "Rigpaz | AI-powered Code Editor",
-    description,
+    title: siteConfig.title,
+    description: siteConfig.description,
   },
 };
 

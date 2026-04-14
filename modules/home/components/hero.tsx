@@ -48,18 +48,18 @@ export function Hero() {
       </p>
 
       <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
-        <Link href="/dashboard">
-          <Button variant="brand" size="lg" className="h-11 px-6 text-base">
+        <Button asChild variant="brand" size="lg" className="h-11 px-6 text-base">
+          <Link href="/dashboard">
             Start building free
             <ArrowUpRight className="size-4" />
-          </Button>
-        </Link>
-        <Link href="/docs">
-          <Button variant="outline" size="lg" className="h-11 px-6 text-base">
+          </Link>
+        </Button>
+        <Button asChild variant="outline" size="lg" className="h-11 px-6 text-base">
+          <Link href="/docs">
             <BookOpen className="size-4" />
             Read the docs
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
 
       <p className="mt-4 text-xs text-muted-foreground">

@@ -2,15 +2,16 @@ import { Metadata } from "next";
 import { Header } from "@/modules/home/header";
 import { Footer } from "@/modules/home/footer";
 import { cn } from "@/lib/utils";
+import { siteConfig } from "@/lib/site";
 
 export const metadata: Metadata = {
-  //for better SEO and page titles (basically better UX)
+  // Only the title template lives here — child pages (e.g. Docs) need it to
+  // render as "Docs | Rigpaz". Everything else is inherited from the root
+  // layout so the branding has one source of truth.
   title: {
-    template: "%s | Rigpaz",
-    default: "Rigpaz | AI Vibe Code Editor",
+    template: `%s | ${siteConfig.name}`,
+    default: siteConfig.title,
   },
-  description:
-    "Rigpaz is a powerful online AI powered vibe code editor that allows you to write, edit, and run code right in your browser. With its intuitive interface and advanced features, Rigpaz is the perfect tool for developers of all skill levels.",
 };
 
 export default function HomeLayout({

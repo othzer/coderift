@@ -36,8 +36,8 @@ up.
 ## Getting started
 
 ```bash
-git clone https://github.com/othzer/coderift.git
-cd coderift
+git clone https://github.com/othzer/rigpaz.git
+cd rigpaz
 npm install
 cp .env.example .env   # then fill in the values
 npx prisma generate
