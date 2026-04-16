@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import { ThemeProvider } from "@/components/providers/theme-providers";
 import { Toaster } from "@/components/ui/sonner";
 import { CommandPalette } from "@/components/command-palette";
+import { siteConfig } from "@/lib/site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,9 +20,30 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Rigpaz | AI-powered Code Editor",
-  description:
-    "Rigpaz is an AI-powered code editor — write, run, and preview code right in your browser.",
+  metadataBase: new URL(siteConfig.url),
+  title: siteConfig.title,
+  description: siteConfig.description,
+  keywords: [
+    "online code editor",
+    "AI code editor",
+    "browser IDE",
+    "WebContainer",
+    "Monaco editor",
+    "Rigpaz",
+  ],
+  authors: [{ name: "otzr.labs" }],
+  openGraph: {
+    type: "website",
+    url: siteConfig.url,
+    siteName: siteConfig.name,
+    title: siteConfig.title,
+    description: siteConfig.description,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteConfig.title,
+    description: siteConfig.description,
+  },
 };
 
 export default async function RootLayout({
