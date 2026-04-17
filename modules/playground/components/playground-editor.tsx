@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useEffect } from "react"
+import { useRef, useEffect, useState } from "react"
 import Editor, { type Monaco } from "@monaco-editor/react"
 import { registerCompletion, type CompletionRegistration } from "monacopilot"
 import { TemplateFile } from "../lib/path-to-json"
@@ -24,24 +24,14 @@ export const PlaygroundEditor = ({
   const editorRef = useRef<any>(null)
   const monacoRef = useRef<Monaco | null>(null)
   const completionRef = useRef<CompletionRegistration | null>(null)
+  const [isEditorReady, setIsEditorReady] = useState(false)
 
-  const getFilename = () =>
-    activeFile ? `${activeFile.filename}.${activeFile.fileExtension}` : undefined
-
-  const registerAICompletion = (editor: any, monaco: Monaco) => {
-    completionRef.current = registerCompletion(monaco, editor, {
-      endpoint: "/api/code-completion",
-      language: activeFile ? getEditorLanguage(activeFile.fileExtension || "") : "plaintext",
-      filename: getFilename(),
-      technologies: ["react", "next.js", "typescript", "tailwindcss"],
-      onCompletionRequested: () => onAiLoadingChange(true),
-      onCompletionRequestFinished: () => onAiLoadingChange(false),
-      onError: (error) => {
-        console.error("AI completion error:", error)
-        onAiLoadingChange(false)
-      },
-    })
-  }
+  const language = activeFile
+    ? getEditorLanguage(activeFile.fileExtension || "")
+    : "plaintext"
+  const filename = activeFile
+    ? `${activeFile.filename}.${activeFile.fileExtension}`
+    : undefined
 
   const handleEditorDidMount = (editor: any, monaco: Monaco) => {
     editorRef.current = editor
@@ -56,12 +46,8 @@ export const PlaygroundEditor = ({
     })
 
     configureMonaco(monaco)
-
-    if (aiEnabled) {
-      registerAICompletion(editor, monaco)
-    }
-
     updateEditorLanguage()
+    setIsEditorReady(true)
   }
 
   const updateEditorLanguage = () => {
@@ -77,37 +63,54 @@ export const PlaygroundEditor = ({
     }
   }
 
-  // Register/deregister the AI completion provider as the toggle changes
-  useEffect(() => {
-    if (!editorRef.current || !monacoRef.current) return
-
-    if (aiEnabled && !completionRef.current) {
-      registerAICompletion(editorRef.current, monacoRef.current)
-    } else if (!aiEnabled && completionRef.current) {
-      completionRef.current.deregister()
-      completionRef.current = null
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aiEnabled])
-
-  // Keep the editor language and completion options in sync with the active file
+  // Keep the editor's model language in sync with the active file.
   useEffect(() => {
     updateEditorLanguage()
-
-    if (completionRef.current && activeFile) {
-      const language = getEditorLanguage(activeFile.fileExtension || "")
-      const filename = getFilename()
-      completionRef.current.updateOptions(() => ({ language, filename }))
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeFile])
 
+  // Register the AI completion provider, and re-register it whenever the
+  // language changes.
+  //
+  // monacopilot binds the provider to the language passed at registration
+  // (`registerInlineCompletionsProvider(language, ...)`), and its
+  // `updateOptions` only mutates its internal options object — it does NOT
+  // move the provider to a new language. So updating options on a file switch
+  // left the provider registered against the *previous* file's language, and
+  // Monaco simply stopped calling it. Deregistering and re-registering is the
+  // only way to follow the active file.
   useEffect(() => {
+    if (!isEditorReady || !editorRef.current || !monacoRef.current) return
+
+    if (!aiEnabled) return
+
+    const registration = registerCompletion(
+      monacoRef.current,
+      editorRef.current,
+      {
+        endpoint: "/api/code-completion",
+        language,
+        filename,
+        technologies: ["react", "next.js", "typescript", "tailwindcss"],
+        onCompletionRequested: () => onAiLoadingChange(true),
+        onCompletionRequestFinished: () => onAiLoadingChange(false),
+        onError: (error) => {
+          console.error("AI completion error:", error)
+          onAiLoadingChange(false)
+        },
+      }
+    )
+    completionRef.current = registration
+
     return () => {
-      completionRef.current?.deregister()
-      completionRef.current = null
+      registration.deregister()
+      if (completionRef.current === registration) {
+        completionRef.current = null
+      }
+      onAiLoadingChange(false)
     }
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditorReady, aiEnabled, language, filename])
 
   return (
     <div className="h-full relative">
@@ -116,7 +119,7 @@ export const PlaygroundEditor = ({
         value={content}
         onChange={(value) => onContentChange(value || "")}
         onMount={handleEditorDidMount}
-        language={activeFile ? getEditorLanguage(activeFile.fileExtension || "") : "plaintext"}
+        language={language}
         // @ts-ignore
         options={defaultEditorOptions}
       />

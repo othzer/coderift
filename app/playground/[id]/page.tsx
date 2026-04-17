@@ -238,17 +238,24 @@ const MainPlaygroundPage = () => {
         await saveTemplateData(updatedTemplateData);
         setTemplateData(updatedTemplateData);
 
-        // Update open files
-        const updatedOpenFiles = openFiles.map((f) =>
-          f.id === targetFileId
-            ? {
-                ...f,
-                content: fileToSave.content,
-                originalContent: fileToSave.content,
-                hasUnsavedChanges: false,
-              }
-            : f
-        );
+        // Everything above is async, so the user may have kept typing while the
+        // save was in flight. Re-read the store instead of using the `openFiles`
+        // captured in this closure, and leave `content` alone — writing the
+        // snapshot back would rewind the editor to the text as it was when the
+        // save started, yanking the cursor and dropping keystrokes.
+        const savedContent = fileToSave.content;
+        const updatedOpenFiles = useFileExplorer
+          .getState()
+          .openFiles.map((f) =>
+            f.id === targetFileId
+              ? {
+                  ...f,
+                  originalContent: savedContent,
+                  // Still dirty if they typed more while this save ran.
+                  hasUnsavedChanges: f.content !== savedContent,
+                }
+              : f
+          );
         setOpenFiles(updatedOpenFiles);
         setLastSavedAt(new Date());
 
