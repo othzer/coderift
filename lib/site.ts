@@ -10,10 +10,10 @@ export const siteConfig = {
   url: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
 } as const;
 
-export const GITHUB_REPO_URL = "https://github.com/othzer/rigpaz";
-export const GITHUB_URL = "https://github.com/othzer";
+export const GITHUB_REPO_URL = process.env.MY_GITHUB_REPO ?? "";
+export const GITHUB_URL = process.env.MY_GITHUB ?? "";
 
 // TODO(othzer): placeholders — replace with the real otzr.labs handles.
-export const LINKEDIN_URL = "https://www.linkedin.com/in/your-handle";
-export const X_URL = "https://x.com/your-handle";
-export const CONTACT_EMAIL = "hello@otzrlabs.com";
+export const LINKEDIN_URL = process.env.MY_LINKEDIN ?? "";
+export const X_URL = process.env.MY_X ?? "";
+export const CONTACT_EMAIL = process.env.MY_EMAIL ?? "";
