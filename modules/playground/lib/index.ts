@@ -33,15 +33,12 @@ export function findFilePath(
  * @returns A unique file identifier including full path
  */
 export const generateFileId = (file: TemplateFile, rootFolder: TemplateFolder): string => {
-  // Find the file's path in the folder structure
-  const path = findFilePath(file, rootFolder)?.replace(/^\/+/, '') || '';
-  
-  // Handle empty/undefined file extension
-  const extension = file.fileExtension?.trim();
-  const extensionSuffix = extension ? `.${extension}` : '';
+  // findFilePath already terminates the path with `filename.extension`, so
+  // appending the filename again produced ids like "src/App.tsx/App.tsx".
+  const fullPath = findFilePath(file, rootFolder)?.replace(/^\/+/, '') || '';
+  if (fullPath) return fullPath;
 
-  // Combine path and filename
-  return path
-    ? `${path}/${file.filename}${extensionSuffix}`
-    : `${file.filename}${extensionSuffix}`;
+  // Not found in the tree — fall back to the bare filename.
+  const extension = file.fileExtension?.trim();
+  return `${file.filename}${extension ? `.${extension}` : ''}`;
 }
