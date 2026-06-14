@@ -3,7 +3,6 @@ import {PrismaAdapter} from "@auth/prisma-adapter"
 import { db } from "./lib/db"
 
 import authConfig from "./auth.config"
-import { getUserById } from "./modules/auth/actions"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
     session: { strategy: "jwt" },
@@ -79,13 +78,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         },
 
         async jwt({token}){
-            if(!token.sub) return token;
+            if(!token.email) return token;
 
-            const existingUser = await getUserById(token.sub);
+            const existingUser = await db.user.findUnique({
+                where: {
+                    email: token.email,
+                },
+            });
 
-            if(!existingUser) return token;
+            if(!existingUser) return token; //return token;
 
             //adding user data to token
+            token.id = existingUser.id;
             token.name = existingUser.name;
             token.email = existingUser.email;
             token.role = existingUser.role;
@@ -95,11 +99,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         async session({session, token}){
             //goal is attach the user id to the session object from the token
-            if((token.sub && session.user)){
-                session.user.id = token.sub;   //sub is bascially the user id in nextauth
+            if((token.id && session.user)){
+                session.user.id = token.id;
             }
 
-            if(token.sub && session.user){
+            if(token.id && session.user){
                 session.user.role = token.role
             }
 
