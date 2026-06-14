@@ -1,0 +1,9 @@
+<svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+  <rect width="160" height="160" rx="24" fill="#0B1220"/>
+
+  <text x="80" y="105" font-family="monospace" font-weight="700" font-size="64" fill="#3B82F6" text-anchor="middle">
+    C<tspan fill="#E2E8F0">R</tspan>
+  </text>
+
+  <rect x="40" y="120" width="80" height="5" rx="2.5" fill="#3B82F6"/>
+</svg>
