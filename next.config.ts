@@ -6,9 +6,20 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: '*',
-        port: '',
-        pathname: '/**'
+        hostname: 'lh3.googleusercontent.com', // Google OAuth avatars
+      },
+      {
+        protocol: "https",
+        hostname: 'avatars.githubusercontent.com', // GitHub OAuth avatars
+      },
+      {
+        protocol: "https",
+        hostname: 'platform-lookaside.fbsbx.com', // Facebook OAuth avatars
+      },
+      // Add other trusted domains as needed
+      {
+        protocol: "https",
+        hostname: 'your-cdn-domain.com',
       }
     ]
   }
