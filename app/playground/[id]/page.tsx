@@ -89,8 +89,19 @@ const MainPlaygroundPage = () => {
   return (
     <TooltipProvider>
       <>
+      {isLoading && (
+        <div className="flex items-center justify-center h-full">
+          <p>Loading...</p>
+        </div>
+      )}
+      {error && (
+        <div className="flex items-center justify-center h-full text-destructive">
+          <p>Error loading playground</p>
+        </div>
+      )}
+      {templateData && (
         <TemplateFileTree
-          data={templateData!}
+          data={templateData}
           onFileSelect={handleFileSelect}
           selectedFile={activeFile}
           title="File Explorer"
@@ -100,8 +111,8 @@ const MainPlaygroundPage = () => {
           onDeleteFolder={()=>{}}
           onRenameFile={()=>{}}
           onRenameFolder={()=>{}}
-
         />
+      )}
         <SidebarInset>
           <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
             <SidebarTrigger className="-ml-1" />

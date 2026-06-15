@@ -144,9 +144,14 @@ export function TemplateFileTree({
           <SidebarGroupContent>
             <SidebarMenu>
               {isRootFolder ? (
-                (data as TemplateFolder).items.map((child, index) => (
+                
+                (data as TemplateFolder).items.map((child) => (
                   <TemplateNode
-                    key={index}
+                    key={
+                      "folderName" in child
+                        ? `folder:${child.folderName}`
+                        : `file:${child.filename}.${child.fileExtension}`
+                    }
                     item={child}
                     onFileSelect={onFileSelect}
                     selectedFile={selectedFile}
