@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -60,13 +60,16 @@ const lucideIconMap: Record<string, LucideIcon> = {
 export function DashboardSidebar({ initialPlaygroundData }: { initialPlaygroundData: PlaygroundData[] }) {
   const pathname = usePathname()
   
-  const [starredPlaygrounds, setStarredPlaygrounds] = useState(
-    (initialPlaygroundData ?? []).filter((p) => p.starred)
-  )
+  const [starredPlaygrounds, setStarredPlaygrounds] = useState((initialPlaygroundData ?? []).filter((p) => p.starred))
   const [recentPlaygrounds, setRecentPlaygrounds] = useState(initialPlaygroundData ?? [])
 
+  useEffect(() => {
+    setStarredPlaygrounds(initialPlaygroundData.filter((p) => p.starred))
+    setRecentPlaygrounds(initialPlaygroundData)
+  }, [initialPlaygroundData])
+
   return (
-    <Sidebar variant="inset" collapsible="icon" className="border-1 border-r">
+    <Sidebar variant="inset" collapsible="icon" className="border border-r">
       <SidebarHeader>
         <div className="flex items-center gap-2 px-4 py-3 justify-center">
           <Image src={"/logo.svg"} alt="logo" height={60} width={60} />
