@@ -16,9 +16,11 @@ export const PlaygroundEditor = ({
   activeFile,
   content,
   onContentChange,
+
 }: PlaygroundEditorProps) => {
   const editorRef = useRef<any>(null)
   const monacoRef = useRef<Monaco | null>(null)
+
 
   const handleEditorDidMount = (editor: any, monaco: Monaco) => {
     editorRef.current = editor

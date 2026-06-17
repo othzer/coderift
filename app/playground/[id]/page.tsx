@@ -29,6 +29,8 @@ import {
   TemplateFile,
   TemplateFolder,
 } from "@/modules/playground/lib/path-to-json";
+import WebContainerPreview from "@/modules/webcontainers/components/webcontainer-preview";
+import { useWebContainer } from "@/modules/webcontainers/hooks/useWebContainer";
 import {
   AlertCircle,
   Bot,
@@ -68,6 +70,15 @@ const MainPlaygroundPage = () => {
 
   } = useFileExplorer();
 
+  const {
+    serverUrl,
+    isLoading: containerLoading,
+    error: containerError,
+    instance,
+    writeFileSync,
+    // @ts-ignore
+  } = useWebContainer({ templateData });
+
 
   useEffect(() => {
     setPlaygroundId(id);
@@ -89,19 +100,20 @@ const MainPlaygroundPage = () => {
   return (
     <TooltipProvider>
       <>
-        <TemplateFileTree
-          data={templateData!}
-          onFileSelect={handleFileSelect}
-          selectedFile={activeFile}
-          title="File Explorer"
-          onAddFile={()=>{}}
-          onAddFolder={()=>{}}
-          onDeleteFile={()=>{}}
-          onDeleteFolder={()=>{}}
-          onRenameFile={()=>{}}
-          onRenameFolder={()=>{}}
-
-        />
+        {templateData && (
+          <TemplateFileTree
+            data={templateData}
+            onFileSelect={handleFileSelect}
+            selectedFile={activeFile}
+            title="File Explorer"
+            onAddFile={()=>{}}
+            onAddFolder={()=>{}}
+            onDeleteFile={()=>{}}
+            onDeleteFolder={()=>{}}
+            onRenameFile={()=>{}}
+            onRenameFolder={()=>{}}
+          />
+        )}
         <SidebarInset>
           <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
             <SidebarTrigger className="-ml-1" />
@@ -233,6 +245,23 @@ const MainPlaygroundPage = () => {
                         onContentChange={()=>{}}
                       />
                     </ResizablePanel>
+
+                    {isPreviewVisible && (
+                      <>
+                        <ResizablePanel defaultSize={50}>
+                          <WebContainerPreview
+                            templateData={templateData}
+                            instance={instance}
+                            writeFileSync={writeFileSync}
+                            isLoading={containerLoading}
+                            error={containerError}
+                            serverUrl={serverUrl!}
+                            forceResetup={false}
+                          />
+                        </ResizablePanel>
+                        
+                      </>
+                    )}
 
                   </ResizablePanelGroup>
                 </div>
