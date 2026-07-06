@@ -6,7 +6,7 @@ import { SiGithub as LucideGithub } from '@icons-pack/react-simple-icons';
 export function Footer() {
   const socialLinks = [
     {
-      href: "#",
+      href: "https://github.com/othzer",
       icon: (
         <LucideGithub className="w-5 h-5 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors" />
         // <SiGithub size={32} color="#181717" />
@@ -33,10 +33,10 @@ export function Footer() {
 
         {/* Copyright Notice */}
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          &copy; {new Date().getFullYear()} CodeRift. All rights reserved.
+          &copy; {new Date().getFullYear()} Rigpaz. All rights reserved.
         </p>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Made with ❤️ by the otzr.labs.
+          Made with ❤️ by otzr.labs
         </p>
       </div>
     </footer>
