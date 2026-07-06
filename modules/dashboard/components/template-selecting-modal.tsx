@@ -24,9 +24,12 @@ import {
   Clock,
   Check,
   Plus,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
+import { SiGithub } from "@icons-pack/react-simple-icons";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // TemplateSelectionModal.tsx
 type TemplateSelectionModalProps = {
@@ -37,6 +40,8 @@ type TemplateSelectionModalProps = {
     template: "REACT" | "NEXTJS" | "EXPRESS" | "VUE" | "HONO" | "ANGULAR";
     description?: string;
   }) => void;
+  onImportGithub: (data: { repoUrl: string; title?: string }) => Promise<void>;
+  initialMode?: "templates" | "github";
 };
 
 interface TemplateOption {
@@ -140,6 +145,8 @@ const TemplateSelectionModal = ({
   isOpen,
   onClose,
   onSubmit,
+  onImportGithub,
+  initialMode = "templates",
 }: TemplateSelectionModalProps) => {
   const [step, setStep] = useState<"select" | "configure">("select");
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
@@ -148,6 +155,47 @@ const TemplateSelectionModal = ({
     "all" | "frontend" | "backend" | "fullstack"
   >("all");
   const [projectName, setProjectName] = useState("");
+  const [mode, setMode] = useState<"templates" | "github">(initialMode);
+  const [repoUrl, setRepoUrl] = useState("");
+  const [githubProjectName, setGithubProjectName] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) setMode(initialMode);
+  }, [isOpen, initialMode]);
+
+  const resetState = () => {
+    setStep("select");
+    setSelectedTemplate(null);
+    setProjectName("");
+    setMode(initialMode);
+    setRepoUrl("");
+    setGithubProjectName("");
+    setIsImporting(false);
+    setImportError(null);
+  };
+
+  const handleImportGithub = async () => {
+    if (!repoUrl.trim() || isImporting) return;
+
+    setIsImporting(true);
+    setImportError(null);
+
+    try {
+      await onImportGithub({
+        repoUrl: repoUrl.trim(),
+        title: githubProjectName.trim() || undefined,
+      });
+      resetState();
+    } catch (error) {
+      setImportError(
+        error instanceof Error ? error.message : "Failed to import repository"
+      );
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
 //Todo Implement Filter Here
     const filteredTemplates = templates.filter((template)=>{
@@ -190,12 +238,9 @@ const TemplateSelectionModal = ({
         description: template?.description
       })
 
-     
+
       onClose();
-      // Reset state for next time
-      setStep("select");
-      setSelectedTemplate(null);
-      setProjectName("");
+      resetState();
     }
   };
 
@@ -223,10 +268,7 @@ const TemplateSelectionModal = ({
       onOpenChange={(open) => {
         if (!open) {
           onClose();
-          // Reset state when closing
-          setStep("select");
-          setSelectedTemplate(null);
-          setProjectName("");
+          resetState();
         }
       }}
     >
@@ -236,13 +278,30 @@ const TemplateSelectionModal = ({
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold text-[#6c63ff] flex items-center gap-2">
                 <Plus size={24} className="text-[#6c63ff]" />
-                Select a Template
+                {mode === "templates" ? "Select a Template" : "Import from GitHub"}
               </DialogTitle>
               <DialogDescription>
-                Choose a template to create your new playground
+                {mode === "templates"
+                  ? "Choose a template to create your new playground"
+                  : "Import a public Node.js repo and run it in the browser sandbox"}
               </DialogDescription>
             </DialogHeader>
 
+            <Tabs
+              value={mode}
+              onValueChange={(value) => setMode(value as "templates" | "github")}
+              className="w-full"
+            >
+              <TabsList className="grid grid-cols-2 w-full sm:w-[320px]">
+                <TabsTrigger value="templates">Templates</TabsTrigger>
+                <TabsTrigger value="github" className="gap-1.5">
+                  <SiGithub size={14} /> Import from GitHub
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            {mode === "templates" ? (
+            <>
             <div className="flex flex-col gap-6 py-4">
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="relative flex-1">
@@ -398,6 +457,70 @@ const TemplateSelectionModal = ({
                 </Button>
               </div>
             </div>
+            </>
+            ) : (
+            <>
+            <div className="flex flex-col gap-6 py-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="repo-url">GitHub Repository URL</Label>
+                <Input
+                  id="repo-url"
+                  placeholder="https://github.com/owner/repo"
+                  value={repoUrl}
+                  onChange={(e) => setRepoUrl(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Public repositories only. The repo must have a package.json with a
+                  &quot;start&quot; or &quot;dev&quot; script to run in the sandbox.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="github-project-name">Project Name (optional)</Label>
+                <Input
+                  id="github-project-name"
+                  placeholder="Defaults to the repository name"
+                  value={githubProjectName}
+                  onChange={(e) => setGithubProjectName(e.target.value)}
+                />
+              </div>
+
+              {importError && (
+                <div className="flex items-start gap-2 p-3 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive text-sm">
+                  <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
+                  <span>{importError}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-between gap-3 mt-4 pt-4 border-t">
+              <div className="flex items-center text-sm text-muted-foreground">
+                <Clock size={14} className="mr-1" />
+                <span>Fetches and analyzes the repo before creating your playground</span>
+              </div>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={onClose}>
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-[#6c63ff] hover:bg-[#6c63ff] text-white"
+                  disabled={!repoUrl.trim() || isImporting}
+                  onClick={handleImportGithub}
+                >
+                  {isImporting ? (
+                    <>
+                      <Loader2 size={16} className="mr-1 animate-spin" /> Importing...
+                    </>
+                  ) : (
+                    <>
+                      <SiGithub size={16} className="mr-1" /> Import Repository
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+            </>
+            )}
           </>
         ) : (
           <>

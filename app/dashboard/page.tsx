@@ -28,7 +28,6 @@ const DashBoard = async() => {
                         onDuplicateProject = {duplicateProjectById} 
                     />
                 )
-
             }
         </div>
     </div>
