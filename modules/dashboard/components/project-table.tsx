@@ -37,17 +37,18 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import Link from "next/link"
 import { useState } from "react"
-import { MoreHorizontal, Edit3, Trash2, ExternalLink, Copy, Download, Eye } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { MoreHorizontal, Edit3, Trash2, ExternalLink, Copy, Eye, Globe, Lock, Link2 } from "lucide-react"
 import { toast } from "sonner"
 import { MarkedToggleButton } from "./marked-toggle"
+import { togglePlaygroundVisibility } from "../actions"
 
 
 interface ProjectTableProps {
   projects: Project[]
   onUpdateProject?: (id: string, data: { title: string; description: string }) => Promise<void>
   onDeleteProject?: (id: string) => Promise<void>
-  onDuplicateProject?: (id: string) => Promise<void>
-  onMarkasFavorite?: (id: string) => Promise<void>
+  onDuplicateProject?: (id: string) => Promise<unknown>
 }
 
 interface EditProjectData {
@@ -60,15 +61,56 @@ export default function ProjectTable({
   onUpdateProject,
   onDeleteProject,
   onDuplicateProject,
-  onMarkasFavorite,
 }: ProjectTableProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [editData, setEditData] = useState<EditProjectData>({ title: "", description: "" })
   const [isLoading, setIsLoading] = useState(false)
-  const [favoutrie, setFavourite] = useState(false)
-  
+  const [publicIds, setPublicIds] = useState<Set<string>>(
+    () => new Set(projects.filter((p) => p.isPublic).map((p) => p.id))
+  )
+  const router = useRouter()
+
+  const setPublic = (id: string, value: boolean) => {
+    setPublicIds((prev) => {
+      const next = new Set(prev)
+      if (value) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  }
+
+  // Make the playground public (if needed) and copy its read-only share link.
+  const handleCopyShareLink = async (project: Project) => {
+    try {
+      if (!publicIds.has(project.id)) {
+        await togglePlaygroundVisibility(project.id, true)
+        setPublic(project.id, true)
+        toast.success("Playground is now public")
+      }
+      const url = `${window.location.origin}/share/${project.id}`
+      await navigator.clipboard.writeText(url)
+      toast.success("Share link copied to clipboard")
+      router.refresh()
+    } catch (error) {
+      console.error("Failed to create share link:", error)
+      toast.error("Failed to create share link")
+    }
+  }
+
+  const handleMakePrivate = async (project: Project) => {
+    try {
+      await togglePlaygroundVisibility(project.id, false)
+      setPublic(project.id, false)
+      toast.success("Playground is now private")
+      router.refresh()
+    } catch (error) {
+      console.error("Failed to update visibility:", error)
+      toast.error("Failed to update visibility")
+    }
+  }
+
   const handleEditClick = (project: Project) => {
     setSelectedProject(project);
     setEditData({
@@ -101,18 +143,14 @@ export default function ProjectTable({
     }
   }
 
-  const handleMarkasFavorite = async (project: Project) => {
-    
-  }
-
   const handleDeleteProject = async () => {
     if(!selectedProject || !onDeleteProject) return;
 
     setIsLoading(true);
-    
+
     try {
       await onDeleteProject(selectedProject.id)
-      setEditDialogOpen(false);
+      setDeleteDialogOpen(false);
       setSelectedProject(null);
       toast.success("Project deleted successfully")
     } catch (error) {
@@ -139,11 +177,6 @@ export default function ProjectTable({
     }
   }
 
-  const copyProjectUrl = (projectId: string) => {
-    const url = `${window.location.origin}/playground/${projectId}`;
-    navigator.clipboard.writeText(url);
-    toast.success('project url copied to clipboard successfully');
-  }
 
   return (
     <>
@@ -163,19 +196,26 @@ export default function ProjectTable({
               <TableRow key={project.id}>
                 <TableCell className="font-medium">
                   <div className="flex flex-col">
-                    <Link href={`/playground/${project.id}`} className="hover:underline">
-                      <span className="font-semibold">{project.title}</span>
-                    </Link>
-                    <span className="text-sm text-gray-500 line-clamp-1">{project.description}</span>
+                    <div className="flex items-center gap-2">
+                      <Link href={`/playground/${project.id}`} className="hover:underline">
+                        <span className="font-semibold">{project.title}</span>
+                      </Link>
+                      {publicIds.has(project.id) && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                          <Globe className="h-2.5 w-2.5" /> Public
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-sm text-muted-foreground line-clamp-1">{project.description}</span>
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="bg-[#E93F3F15] text-[#6c63ff] border-[#6c63ff]">
+                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
                     {project.template}
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-muted-foreground">
                   {format(new Date(project.createdAt), "MMM dd, yyyy")}
                   </span>
                 </TableCell>
@@ -184,7 +224,7 @@ export default function ProjectTable({
                     <div className="w-8 h-8 rounded-full overflow-hidden">
                       <Image
                         src={project.user.image || "/placeholder.svg"}
-                        alt={project.user.name}
+                        alt={project.user.name || "User"}
                         width={32}
                         height={32}
                         className="object-cover"
@@ -226,10 +266,17 @@ export default function ProjectTable({
                         <Copy className="h-4 w-4 mr-2" />
                         Duplicate
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => copyProjectUrl(project.id)}>
-                        <Download className="h-4 w-4 mr-2" />
-                        Copy URL
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => handleCopyShareLink(project)}>
+                        <Link2 className="h-4 w-4 mr-2" />
+                        {publicIds.has(project.id) ? "Copy share link" : "Share (make public)"}
                       </DropdownMenuItem>
+                      {publicIds.has(project.id) && (
+                        <DropdownMenuItem onClick={() => handleMakePrivate(project)}>
+                          <Lock className="h-4 w-4 mr-2" />
+                          Make private
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() => handleDeleteClick(project)}

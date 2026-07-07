@@ -11,7 +11,10 @@ export default auth((req)=>{
     const isLoggedIn = !!req.auth
 
     const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
-    const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
+    // /share/<id> is a public, read-only view of a playground the owner opted to share.
+    const isPublicRoute =
+        publicRoutes.includes(nextUrl.pathname) ||
+        nextUrl.pathname.startsWith("/share/");
     const isAuthRoute = authRoutes.includes(nextUrl.pathname);
 
     if(isApiAuthRoute){ 
