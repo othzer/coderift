@@ -5,8 +5,12 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "next dev",
+    "start:prod": "next start",
     "lint": "next lint"
+  },
+  "devDependencies": {
+    "@next/swc-wasm-nodejs": "13.5.1"
   },
   "dependencies": {
     "@types/node": "20.6.2",
