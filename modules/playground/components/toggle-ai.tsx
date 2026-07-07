@@ -34,7 +34,8 @@ import { AIChatSidePanel } from "@/modules/ai-chat/components/ai-chat-sidebarPan
 interface ToggleAIProps {
   isEnabled: boolean;
   onToggle: (value: boolean) => void;
-  
+  playgroundId?: string;
+
   suggestionLoading: boolean;
   loadingProgress?: number;
   activeFeature?: string;
@@ -43,6 +44,7 @@ interface ToggleAIProps {
 const ToggleAI: React.FC<ToggleAIProps> = ({
   isEnabled,
   onToggle,
+  playgroundId,
 
   suggestionLoading,
   loadingProgress = 0,
@@ -171,6 +173,7 @@ const ToggleAI: React.FC<ToggleAIProps> = ({
       <AIChatSidePanel
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
+        playgroundId={playgroundId}
       />
     </>
   );
