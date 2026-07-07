@@ -36,14 +36,12 @@ export const usePlayground = (id: string): UsePlaygroundReturn => {
 
       const data = await getPlaygroundById(id);
 
-      //   @ts-ignore
-      setPlaygroundData(data);
+      setPlaygroundData(data ?? null);
       const rawContent = data?.templateFiles?.[0]?.content;
 
       if (typeof rawContent === "string") {
         const parsedContent = JSON.parse(rawContent);
         setTemplateData(parsedContent);
-        toast.success("playground loaded successfully");
         return;
       }
 
@@ -68,7 +66,6 @@ export const usePlayground = (id: string): UsePlaygroundReturn => {
           }
         );
       }
-      toast.success("Template loaded successfully");
     } catch (error) {
       console.error("Error loading playground:", error);
       setError("Failed to load playground data");

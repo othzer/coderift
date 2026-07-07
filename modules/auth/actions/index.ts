@@ -5,9 +5,10 @@ import {db} from "@/lib/db";
 
 export const getUserById = async (id: string) => {
     try{
+        // Note: do NOT include `accounts` here — that relation stores OAuth
+        // access/refresh/id tokens and must never be returned to a caller.
         const user = await db.user.findUnique({
             where: {id},
-            include: {accounts: true}
         });
         return user;
     } catch (error) {

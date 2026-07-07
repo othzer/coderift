@@ -7,11 +7,11 @@ export default async function DashboardLayout({children}: {children: React.React
     const playgroundData = await getAllPlaygroundForUser();
 
     const technologyIconMap: Record<string, string> = {
-        REACT: "zap",
+        REACT: "Zap",
         NEXTJS: "Lightbulb",
         EXPRESS: "Database",
         VUE: "Compass",
-        HOMO: "FLameIcon",
+        HONO: "FlameIcon",
         ANGULAR: "Terminal",
     }
 
