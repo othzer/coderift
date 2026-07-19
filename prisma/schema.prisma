@@ -116,6 +116,7 @@ model ChatMessage {
   playgroundId String?  // chat is scoped to the playground it was sent from
   role   String  // "user" or "assistant"
   content String
+  attachments String[] @default([])  // paths of project files attached to this message
   createdAt DateTime  @default(now())
 
   user  User @relation(fields: [userId] , references: [id] , onDelete: Cascade)
