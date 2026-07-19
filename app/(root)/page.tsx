@@ -12,7 +12,7 @@ export default function Home() {
       <Image src={"/hero.svg"} alt="Hero-Section" height={300}  width={300}/>
       
       <h1 className=" z-20 text-6xl mt-5 font-extrabold text-center bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-[#6057ff] to-blue-500 dark:from-indigo-400 dark:via-[#6057ff] dark:to-blue-400 tracking-tight leading-[1.3] ">
-        Code EditorWith Intelligence
+        Code Editor With Intelligence
       </h1>
       </div>
 
