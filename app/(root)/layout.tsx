@@ -19,23 +19,28 @@ export default function HomeLayout({
   children: React.ReactNode;
 }) {
   return (
-    <>
-      <Header />
-
+    <div className="relative flex min-h-screen flex-col">
+      {/* Decorative grid backdrop. Fixed rather than absolute so it stays put
+          behind long pages instead of scrolling away after one viewport. */}
       <div
+        aria-hidden
         className={cn(
-          "absolute inset-0",
+          "pointer-events-none fixed inset-0 -z-10",
           "[background-size:25px_25px]",
           "[background-image:linear-gradient(to_right,#e4e4e7_1px,transparent_1px),linear-gradient(to_bottom,#e4e4e7_1px,transparent_1px)]",
           "dark:[background-image:linear-gradient(to_right,#262626_1px,transparent_1px),linear-gradient(to_bottom,#262626_1px,transparent_1px)]",
         )}
       />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10 bg-white [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-black"
+      />
 
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-black" />
+      <Header />
 
-      <main className="z-20 relative w-full pt-0 ">{children}</main>
+      <main className="relative z-10 w-full flex-1">{children}</main>
 
       <Footer />
-    </>
+    </div>
   );
 }
