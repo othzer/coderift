@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
+import { GITHUB_REPO_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Docs",
@@ -87,12 +88,12 @@ export default function DocsPage() {
               After signing in you land on the dashboard, where you create your
               first project. Nothing needs to be installed on your machine.
             </p>
-            <Link href="/dashboard" className="inline-block">
-              <Button variant="brand">
+            <Button asChild variant="brand">
+              <Link href="/dashboard">
                 Open the dashboard
                 <ArrowUpRight className="size-4" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </Section>
 
           <Section id="projects" title="Projects & templates">
@@ -222,17 +223,16 @@ export default function DocsPage() {
             <p className="mt-2 text-sm text-muted-foreground">
               Open an issue on GitHub and it&apos;ll get looked at.
             </p>
-            <Link
-              href="https://github.com/othzer/coderift"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 inline-block"
-            >
-              <Button variant="outline">
+            <Button asChild variant="outline" className="mt-4">
+              <Link
+                href={`${GITHUB_REPO_URL}/issues`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 Report an issue
                 <ArrowUpRight className="size-4" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       </div>

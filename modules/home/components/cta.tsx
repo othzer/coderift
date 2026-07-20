@@ -19,12 +19,12 @@ export function Cta() {
         </p>
 
         <div className="relative mt-8 flex justify-center">
-          <Link href="/dashboard">
-            <Button variant="brand" size="lg" className="h-11 px-6 text-base">
+          <Button asChild variant="brand" size="lg" className="h-11 px-6 text-base">
+            <Link href="/dashboard">
               Start building free
               <ArrowUpRight className="size-4" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </div>
     </section>

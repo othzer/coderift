@@ -4,11 +4,12 @@ import { Mail } from "lucide-react";
 import { SiGithub, SiX } from "@icons-pack/react-simple-icons";
 import { LinkedinIcon } from "./components/linkedin-icon";
 
-// TODO(othzer): swap these placeholders for the real otzr.labs handles.
-const LINKEDIN_URL = "https://www.linkedin.com/in/your-handle";
-const GITHUB_URL = "https://github.com/othzer";
-const X_URL = "https://x.com/your-handle";
-const CONTACT_EMAIL = "hello@otzrlabs.com";
+import {
+  CONTACT_EMAIL,
+  GITHUB_URL,
+  LINKEDIN_URL,
+  X_URL,
+} from "@/lib/site";
 
 const SOCIALS = [
   { href: GITHUB_URL, label: "GitHub", icon: SiGithub },

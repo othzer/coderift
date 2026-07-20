@@ -46,16 +46,12 @@ export function MobileNav({
             </Link>
           ))}
 
-          <Link
-            href="/dashboard"
-            onClick={() => setOpen(false)}
-            className="mt-4"
-          >
-            <Button variant="brand" className="w-full" size="lg">
+          <Button asChild variant="brand" size="lg" className="mt-4 w-full">
+            <Link href="/dashboard" onClick={() => setOpen(false)}>
               {isLoggedIn ? "Go to dashboard" : "Get started"}
               <ArrowUpRight className="size-4" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </nav>
       </SheetContent>
     </Sheet>

@@ -163,12 +163,12 @@ export async function SignedInHome({ name }: { name?: string | null }) {
             Create your first playground from a starter template, or import an
             existing repository from GitHub.
           </p>
-          <Link href="/dashboard" className="mt-6 inline-block">
-            <Button variant="brand" size="lg">
+          <Button asChild variant="brand" size="lg" className="mt-6">
+            <Link href="/dashboard">
               Create a project
               <ArrowUpRight className="size-4" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       )}
     </section>
