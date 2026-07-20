@@ -19,6 +19,21 @@ const nextConfig: NextConfig = {
     ]
   },
 
+  // /api/template/[id] reads starter files off disk at runtime via
+  // path.join(process.cwd(), ...). Because that path is built dynamically,
+  // Next's file tracer can't prove the files are needed — it currently picks
+  // them up only as a side effect of over-tracing, and already misses the
+  // starters' .gitignore files. Declaring them explicitly guarantees the whole
+  // directory ships with the serverless function.
+  // The second pattern is not redundant: glob `*` does not match leading
+  // dots, so without it the starters' .gitignore files are left out.
+  outputFileTracingIncludes: {
+    "/api/template/[id]": [
+      "./vibecode-starters/**/*",
+      "./vibecode-starters/**/.*",
+    ],
+  },
+
   async headers() {
     return [
       {

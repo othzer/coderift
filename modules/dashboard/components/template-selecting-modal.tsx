@@ -129,7 +129,7 @@ const templates: TemplateOption[] = [
     icon: "/angular-icon.svg",
     color: "#DD0031",
     popularity: 3,
-    tags: ["React", "Fullstack", "JavaScript"],
+    tags: ["Fullstack", "JavaScript", "TypeScript"],
     features: [
       "Reactive Data Binding",
       "Component System",
